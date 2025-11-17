@@ -73,6 +73,26 @@ flake8==6.1.0              # Linting
 mypy==1.5.1                # Type checking
 
 # ============================================
+# ADVANCED ML & EXPLAINABILITY
+# ============================================
+shap==0.43.0               # SHAP explainability
+lime==0.2.0.1              # LIME local explanations
+optuna==3.3.0              # Hyperparameter optimization
+keras==2.13.1              # Deep learning (part of TensorFlow)
+
+# ============================================
+# INTEGRATION & COMMUNICATION
+# ============================================
+twilio==8.9.1              # WhatsApp Business API
+requests==2.31.0           # HTTP requests for API integrations
+
+# ============================================
+# STREAMING & REAL-TIME (Optional)
+# ============================================
+# kafka-python==2.0.2      # Apache Kafka integration
+# redis==5.0.0             # Redis cache
+
+# ============================================
 # DEPLOYMENT
 # ============================================
 gunicorn==21.2.0           # Production WSGI server

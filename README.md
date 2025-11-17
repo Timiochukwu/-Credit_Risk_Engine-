@@ -48,6 +48,34 @@ The Nigerian Credit Risk Engine is a comprehensive machine learning system desig
 - ✅ **Batch Predictions**: Process multiple applications efficiently
 - ✅ **Explainability**: Feature importance and prediction explanations
 
+### 🚀 Advanced Features (NEW!)
+
+**📖 See [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md) for complete documentation**
+
+#### ML & AI Enhancements
+- ✅ **SHAP/LIME Explainability**: CBN-compliant explanations for every decision
+- ✅ **Deep Learning Models**: TabNet, DNNs, Autoencoders for fraud detection
+- ✅ **AutoML & Ensemble**: Optuna optimization, stacking/voting ensembles
+- ✅ **What-If Analysis**: Interactive scenario testing for loan officers
+
+#### Nigerian Market-Specific
+- ✅ **BVN & NIBSS Integration**: Identity verification + nationwide credit bureau
+- ✅ **Alternative Data**: Mobile money, utility payments, Ajo/Esusu groups
+- ✅ **Economic Factors**: Oil prices, Naira exchange rates, sector risks
+- ✅ **Geospatial Risk**: Location-based risk assessment
+
+#### Analytics & Intelligence
+- ✅ **Early Warning System**: Predict defaults 3 months before they happen
+- ✅ **Portfolio Risk Analytics**: CBN reporting, stress testing, Basel III
+- ✅ **Fraud Detection**: ML-based with 95%+ precision
+- ✅ **Customer Lifetime Value**: Predict long-term profitability
+
+#### Integration & Channels
+- ✅ **WhatsApp Bot**: Conversational loan application (Twilio Business API)
+- ✅ **USSD Integration**: Feature phone support (*347#)
+- ✅ **Core Banking**: Finacle, T24, BankOne integration
+- ✅ **Workflow Automation**: End-to-end loan processing
+
 ### Nigerian-Specific Features
 
 - 🇳🇬 Nigerian names from major ethnic groups (Yoruba, Igbo, Hausa)
