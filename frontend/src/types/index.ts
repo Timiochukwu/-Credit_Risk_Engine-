@@ -18,6 +18,8 @@ export interface LoanApplication {
   monthlyIncome: number;
   loanAmount: number;
   loanPurpose: string;
+  loanCurrency?: string;
+  incomeCurrency?: string;
   tenureMonths: number;
   hasExistingLoans: boolean;
   existingLoanAmount?: number;
@@ -48,8 +50,8 @@ export interface User {
 }
 
 export interface AuthTokens {
-  accessToken: string;
-  tokenType: string;
+  access_token: string;
+  token_type: string;
 }
 
 export interface DashboardMetrics {
@@ -58,25 +60,155 @@ export interface DashboardMetrics {
   averageRiskScore: number;
   portfolioValue: number;
   nplRatio: number;
+  applicationsToday?: number;
+  pendingReview?: number;
+  avgProcessingTime?: number;
 }
 
 export interface PortfolioRisk {
   totalLoans: number;
   totalOutstanding: number;
   expectedLoss: number;
+  nplAmount?: number;
   concentration: {
     sector: Record<string, number>;
     geography: Record<string, number>;
   };
 }
 
-export interface FXRisk {
+export interface FXRiskAssessment {
   fxRiskScore: number;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   currencyMismatch: boolean;
+  exchangeRate: {
+    official: number;
+    parallel: number;
+    premium: number;
+  };
   devaluationImpact?: {
     scenario: string;
     paymentIncrease: number;
     newDTI: number;
+    defaultRiskIncrease?: string;
   };
+  hedgingRequired: boolean;
+}
+
+export interface BVNVerificationResult {
+  valid: boolean;
+  bvn: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  phone?: string;
+  verified: boolean;
+  message: string;
+}
+
+export interface FraudCheckResult {
+  fraudScore: number;
+  isFraud: boolean;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  indicators: string[];
+  recommendation: 'APPROVE' | 'REJECT' | 'REVIEW';
+}
+
+export interface ComplianceResult {
+  compliant: boolean;
+  checks: {
+    [key: string]: {
+      passed: boolean;
+      message: string;
+    };
+  };
+  overallStatus: string;
+}
+
+export interface EarlyWarningResult {
+  loanId: string;
+  customerName: string;
+  warningScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  daysOverdue: number;
+  defaultProbability3Months: number;
+  warningSignals: string[];
+  intervention: {
+    urgency: string;
+    actions: string[];
+  };
+}
+
+export interface AlternativeDataScore {
+  mobileMoneyScore: number;
+  utilityPaymentScore: number;
+  ajoParticipation: boolean;
+  ajoTrustworthiness?: number;
+  socialMediaScore: number;
+  compositeScore: number;
+}
+
+export interface BlockchainBlock {
+  index: number;
+  timestamp: string;
+  type: string;
+  applicationId: string;
+  data: any;
+  hash: string;
+  previousHash: string;
+}
+
+export interface SmartContract {
+  contractId: string;
+  borrower: string;
+  loanAmount: number;
+  monthlyPayment: number;
+  status: 'PENDING' | 'ACTIVE' | 'FULFILLED' | 'DEFAULTED';
+  payments: {
+    total: number;
+    paid: number;
+    pending: number;
+    late: number;
+  };
+  nextPaymentDue?: string;
+}
+
+export interface ModelInfo {
+  modelName: string;
+  version: string;
+  trainedDate: string;
+  metrics: {
+    aucRoc: number;
+    accuracy: number;
+    precision: number;
+    recall: number;
+    f1Score: number;
+  };
+  featuresCount: number;
+  trainingDataSize: number;
+}
+
+export interface ABTestExperiment {
+  experimentId: string;
+  name: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'PAUSED';
+  variants: {
+    name: string;
+    trafficPercent: number;
+    predictions: number;
+    avgProbability: number;
+  }[];
+  startDate: string;
+  endDate?: string;
+}
+
+export interface ChartDataPoint {
+  name: string;
+  value: number;
+  label?: string;
+}
+
+export interface StressTestResult {
+  scenario: string;
+  additionalLoss: number;
+  nplIncrease: number;
 }
