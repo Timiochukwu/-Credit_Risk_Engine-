@@ -1,6 +1,6 @@
 # 🚀 Advanced Features Documentation
 
-This document describes all **25 advanced features** implemented in the Nigerian Credit Risk Engine.
+This document describes all **26 advanced features** implemented in the Nigerian Credit Risk Engine.
 
 ## 📑 Table of Contents
 
@@ -341,6 +341,154 @@ print(f"  Additional Loss: ₦{oil_scenario['expected_additional_loss']:,.0f}")
 - Basel III capital adequacy
 - Concentration risk limits
 - Expected loss provisions
+
+---
+
+### 4.3 FX Risk Management ⭐ NEW
+**File**: `src/analytics/fx_risk.py`
+
+Comprehensive foreign exchange risk management for Nigerian banks.
+
+**Features**:
+- Real-time CBN exchange rate integration
+- Currency mismatch risk assessment
+- FX exposure calculation
+- Naira devaluation impact simulation
+- Multi-currency loan support
+- Parallel market (Aboki) rate tracking
+
+**Usage**:
+```python
+from src.analytics.fx_risk import FXRiskAnalyzer, CBNExchangeRateService
+
+# Get current exchange rates
+fx_service = CBNExchangeRateService()
+
+# Official CBN rate
+usd_rate = fx_service.get_official_rate('USD')
+print(f"USD/NGN Official: ₦{usd_rate['mid']:,.2f}")
+
+# Parallel market rate
+parallel_rate = fx_service.get_parallel_market_rate('USD')
+print(f"USD/NGN Parallel: ₦{parallel_rate['mid']:,.2f}")
+
+# Volatility analysis
+volatility = fx_service.calculate_volatility('USD', days=30)
+print(f"Annualized Volatility: {volatility['annualized_volatility']:.1%}")
+
+# FX Risk Assessment
+analyzer = FXRiskAnalyzer()
+
+loan_with_fx_risk = {
+    'loan_currency': 'USD',  # Loan in dollars
+    'income_currency': 'NGN',  # Income in Naira - MISMATCH!
+    'loan_amount': 50_000,  # $50k
+    'monthly_income': 450_000,  # ₦450k
+    'monthly_payment': 2_500,  # $2.5k/month
+    'employment_sector': 'Manufacturing'
+}
+
+assessment = analyzer.assess_fx_risk(loan_with_fx_risk)
+
+print(f"FX Risk Score: {assessment['fx_risk_score']}/100")
+print(f"Risk Level: {assessment['risk_level']}")
+print(f"Hedging Required: {assessment['hedging_required']}")
+
+# Devaluation impact simulation
+impact = analyzer.simulate_devaluation_impact(loan_with_fx_risk, 0.30)  # 30% devaluation
+print(f"\nIf Naira devalues 30%:")
+print(f"  Payment increases to: ₦{impact['new_monthly_payment']:,.0f}")
+print(f"  DTI increases to: {impact['new_dti']:.1%}")
+print(f"  Default Risk: {impact['default_risk_increase']}")
+```
+
+**Critical Features**:
+
+1. **Real-time CBN Rates**
+   - Official exchange rates from Central Bank of Nigeria
+   - Parallel market (black market) rates
+   - Hourly rate updates with caching
+   - Multi-currency support (USD, EUR, GBP)
+
+2. **FX Risk Scoring**
+   - Currency mismatch detection
+   - FX exposure ratio calculation
+   - Sector sensitivity analysis
+   - Volatility impact assessment
+
+3. **Devaluation Simulation**
+   - Test impact of 10%, 20%, 30% Naira drops
+   - Stress test customer affordability
+   - Calculate default probability increase
+   - Assess loan sustainability
+
+**Nigerian Context**:
+- **Naira Volatility**: Annual volatility often exceeds 25%
+- **Dual Exchange Rates**: Official vs parallel market (10-20% premium)
+- **Oil Dependency**: Oil exports drive Naira strength/weakness
+- **Import Dependence**: Many businesses have USD costs
+- **Manufacturing Sector**: High FX exposure for raw materials
+- **CBN Interventions**: Central Bank actively manages rates
+
+**Risk Categories**:
+- **LOW (<20)**: Minimal FX exposure, proceed normally
+- **MEDIUM (20-40)**: Add FX risk premium (+2% interest)
+- **HIGH (40-60)**: Require hedge documentation, weekly monitoring
+- **CRITICAL (60+)**: Reject unless hard currency collateral
+
+**Real-World Scenarios**:
+
+**Scenario 1: Manufacturing Company**
+```
+Loan Currency: USD ($100k)
+Income Currency: NGN (₦10M/month)
+Issue: Imports raw materials in USD, sells locally in NGN
+Risk: If Naira devalues 30%, loan payment jumps 30% in NGN terms
+Recommendation: Require proof of USD revenue OR Naira hedge
+```
+
+**Scenario 2: Oil & Gas Employee**
+```
+Loan Currency: USD ($50k)
+Income Currency: USD ($5k/month)
+Issue: None - natural hedge
+Risk: LOW - income and debt in same currency
+Recommendation: Approve with standard terms
+```
+
+**Scenario 3: Tech Startup**
+```
+Loan Currency: NGN (₦20M)
+Income Currency: Mix (60% NGN, 40% USD)
+Issue: Partial dollar revenue provides some protection
+Risk: MEDIUM - partial natural hedge
+Recommendation: Monitor exchange rates quarterly
+```
+
+**Integration with Portfolio Risk**:
+```python
+# Combined FX + Portfolio Analysis
+from src.analytics.portfolio_risk import PortfolioRiskAnalyzer
+from src.analytics.fx_risk import FXRiskAnalyzer
+
+portfolio_analyzer = PortfolioRiskAnalyzer()
+fx_analyzer = FXRiskAnalyzer()
+
+# Assess portfolio-wide FX exposure
+portfolio_analysis = portfolio_analyzer.analyze_portfolio(all_loans_df)
+fx_exposure = portfolio_analysis['summary']['total_outstanding'] * 0.25  # Assume 25% FX loans
+
+# Stress test: 30% devaluation
+devaluation_loss = fx_exposure * 0.30 * 0.12  # 30% devaluation × 12% default rate
+print(f"Potential FX-driven loss: ₦{devaluation_loss:,.0f}")
+```
+
+**Why Critical for Nigeria**:
+1. **Volatile Currency**: Naira can move 10-30% in months
+2. **Import Dependence**: Many businesses have FX costs
+3. **Oil Price Link**: Naira moves with oil prices
+4. **CBN Interventions**: Policy changes affect rates
+5. **Parallel Market**: Large spread between official & black market
 
 ---
 
