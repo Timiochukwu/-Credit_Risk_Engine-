@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14
+    container_name: credit_risk_db
+    environment:
+      POSTGRES_DB: credit_risk_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - credit_risk_network
+
+  # FastAPI Application
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: credit_risk_api
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=credit_risk_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    volumes:
+      - ../src:/app/src
+      - ../models:/app/models
+      - ../data:/app/data
+    depends_on:
+      - postgres
+    networks:
+      - credit_risk_network
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: credit_risk_dashboard
+    command: streamlit run dashboard/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      - DB_HOST=postgres
+    volumes:
+      - ../dashboard:/app/dashboard
+      - ../src:/app/src
+      - ../models:/app/models
+      - ../data:/app/data
+    depends_on:
+      - api
+    networks:
+      - credit_risk_network
+
+  # MLflow Tracking Server
+  mlflow:
+    image: python:3.9-slim
+    container_name: credit_risk_mlflow
+    command: >
+      sh -c "pip install mlflow psycopg2-binary &&
+             mlflow server
+             --backend-store-uri postgresql://postgres:postgres@postgres:5432/mlflow_db
+             --default-artifact-root /mlflow/artifacts
+             --host 0.0.0.0
+             --port 5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    depends_on:
+      - postgres
+    networks:
+      - credit_risk_network
+
+volumes:
+  postgres_data:
+  mlflow_data:
+
+networks:
+  credit_risk_network:
+    driver: bridge

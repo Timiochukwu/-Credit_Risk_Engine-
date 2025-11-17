@@ -1,0 +1,79 @@
+# ============================================
+# CORE DATA SCIENCE LIBRARIES
+# ============================================
+pandas==2.1.0              # Data manipulation and analysis
+numpy==1.24.3              # Numerical computing
+scikit-learn==1.3.0        # Machine learning algorithms
+xgboost==2.0.0             # Gradient boosting (high performance)
+lightgbm==4.0.0            # Another gradient boosting library
+imbalanced-learn==0.11.0   # Handle imbalanced datasets (common in credit risk)
+
+# ============================================
+# DEEP LEARNING (Optional but impressive)
+# ============================================
+tensorflow==2.13.0         # Neural networks
+
+# ============================================
+# API DEVELOPMENT
+# ============================================
+fastapi==0.103.0           # Modern, fast web framework
+uvicorn==0.23.0            # ASGI server to run FastAPI
+pydantic==2.3.0            # Data validation using Python type hints
+python-jose[cryptography]==3.3.0  # JWT tokens for authentication
+passlib[bcrypt]==1.7.4     # Password hashing
+python-multipart==0.0.6    # Handle file uploads in API
+
+# ============================================
+# DATABASE
+# ============================================
+psycopg2-binary==2.9.7     # PostgreSQL adapter
+sqlalchemy==2.0.20         # SQL toolkit and ORM
+alembic==1.11.3            # Database migration tool
+
+# ============================================
+# MLOPS & EXPERIMENT TRACKING
+# ============================================
+mlflow==2.6.0              # Track experiments, models, deployments
+great-expectations==0.17.0  # Data validation and testing
+evidently==0.4.0           # Model monitoring and drift detection
+
+# ============================================
+# DATA GENERATION & FAKER
+# ============================================
+Faker==19.6.0              # Generate fake but realistic data
+scipy==1.11.2              # Scientific computing (for distributions)
+
+# ============================================
+# VISUALIZATION
+# ============================================
+matplotlib==3.7.2          # Basic plotting
+seaborn==0.12.2            # Statistical visualizations
+plotly==5.16.1             # Interactive plots
+streamlit==1.26.0          # Dashboard for monitoring
+
+# ============================================
+# UTILITIES
+# ============================================
+python-dotenv==1.0.0       # Load environment variables from .env
+joblib==1.3.2              # Save/load models efficiently
+tqdm==4.66.1               # Progress bars
+
+# ============================================
+# TESTING
+# ============================================
+pytest==7.4.0              # Testing framework
+pytest-cov==4.1.0          # Test coverage
+httpx==0.24.1              # Test API endpoints
+
+# ============================================
+# CODE QUALITY
+# ============================================
+black==23.7.0              # Code formatter
+flake8==6.1.0              # Linting
+mypy==1.5.1                # Type checking
+
+# ============================================
+# DEPLOYMENT
+# ============================================
+gunicorn==21.2.0           # Production WSGI server
+boto3==1.28.0              # AWS SDK (for cloud deployment)
