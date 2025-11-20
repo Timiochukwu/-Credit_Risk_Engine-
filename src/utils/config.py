@@ -165,14 +165,80 @@ API_TITLE = "Nigerian Credit Risk Engine API"
 API_VERSION = "1.0.0"
 API_DESCRIPTION = "Enterprise-grade credit risk assessment for Nigerian financial institutions"
 
-# Security
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+# ============================================
+# ENVIRONMENT DETECTION
+# ============================================
+API_ENV = os.getenv("API_ENV", "development")
+IS_PRODUCTION = API_ENV == "production"
+IS_DEVELOPMENT = API_ENV == "development"
+
+# ============================================
+# SECURITY CONFIGURATION
+# ============================================
+# SECRET_KEY - CRITICAL: Must be set in production
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# Validate SECRET_KEY based on environment
+if IS_PRODUCTION:
+    if not SECRET_KEY:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: SECRET_KEY environment variable must be set in production. "
+            "Generate a secure key with: openssl rand -hex 32"
+        )
+    if len(SECRET_KEY) < 32:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: SECRET_KEY must be at least 32 characters long. "
+            f"Current length: {len(SECRET_KEY)}. Generate a secure key with: openssl rand -hex 32"
+        )
+else:
+    # Development mode: use a default key with a warning
+    if not SECRET_KEY:
+        import warnings
+        SECRET_KEY = "dev-secret-key-INSECURE-REPLACE-IN-PRODUCTION-" + "x" * 32
+        warnings.warn(
+            "WARNING: Using default SECRET_KEY in development mode. "
+            "This is INSECURE and should NEVER be used in production!",
+            UserWarning
+        )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Session security
+SESSION_COOKIE_SECURE = IS_PRODUCTION  # HTTPS only in production
+SESSION_COOKIE_HTTPONLY = True  # Prevent XSS
+SESSION_COOKIE_SAMESITE = "lax"  # CSRF protection
+
+# ============================================
+# RATE LIMITING CONFIGURATION
+# ============================================
+# Prevent brute force attacks and API abuse
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+
+# Login endpoint rate limits (prevent brute force)
+RATE_LIMIT_LOGIN = os.getenv("RATE_LIMIT_LOGIN", "5/minute")  # 5 attempts per minute
+
+# Prediction endpoint rate limits
+RATE_LIMIT_PREDICTION = os.getenv("RATE_LIMIT_PREDICTION", "100/hour")  # 100 predictions per hour
+
+# General API rate limit
+RATE_LIMIT_GENERAL = os.getenv("RATE_LIMIT_GENERAL", "1000/hour")  # 1000 requests per hour
+
+# Rate limit storage (redis recommended for production)
+RATE_LIMIT_STORAGE_URL = os.getenv("RATE_LIMIT_STORAGE_URL", "memory://")  # Use Redis in production
+
 # CORS (Cross-Origin Resource Sharing)
-# In production, replace with actual frontend URLs
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8501").split(",")
+# In production, MUST specify exact origins (no wildcards)
+ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8501")
+ALLOWED_ORIGINS = ALLOWED_ORIGINS_ENV.split(",")
+
+# Validate CORS in production
+if IS_PRODUCTION:
+    if "localhost" in ALLOWED_ORIGINS_ENV or "*" in ALLOWED_ORIGINS_ENV:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: ALLOWED_ORIGINS must not contain 'localhost' or '*' in production. "
+            f"Current value: {ALLOWED_ORIGINS_ENV}"
+        )
 
 # ============================================
 # DATABASE CONFIGURATION
@@ -181,9 +247,44 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "credit_risk_db")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+# Validate database password in production
+if IS_PRODUCTION:
+    if not DB_PASSWORD:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: DB_PASSWORD environment variable must be set in production. "
+            "Never use default passwords in production!"
+        )
+    if DB_PASSWORD in ["postgres", "password", "admin", "root"]:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: DB_PASSWORD cannot be a common/default password. "
+            f"Current password is too weak. Use a strong, randomly generated password."
+        )
+    if len(DB_PASSWORD) < 16:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: DB_PASSWORD must be at least 16 characters long. "
+            f"Current length: {len(DB_PASSWORD)}"
+        )
+else:
+    # Development mode: use default with warning
+    if not DB_PASSWORD:
+        import warnings
+        DB_PASSWORD = "postgres_dev_INSECURE"
+        warnings.warn(
+            "WARNING: Using default DB_PASSWORD in development mode. "
+            "This is INSECURE and should NEVER be used in production!",
+            UserWarning
+        )
+
+# Database connection URL with connection pooling parameters
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Database connection pool configuration
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "20"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "40"))
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))  # 1 hour
 
 # ============================================
 # MLFLOW CONFIGURATION
@@ -208,8 +309,27 @@ DATA_DRIFT_THRESHOLD = 0.1  # Alert if feature distribution changes by more than
 # ============================================
 # LOGGING CONFIGURATION
 # ============================================
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if IS_DEVELOPMENT else "WARNING")
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Structured logging configuration
+LOG_JSON_FORMAT = IS_PRODUCTION  # Use JSON logging in production
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "/var/log/credit-risk/app.log" if IS_PRODUCTION else "logs/app.log")
+
+# ============================================
+# MONITORING & ALERTING CONFIGURATION
+# ============================================
+# Sentry configuration for error tracking
+SENTRY_DSN = os.getenv("SENTRY_DSN")  # Set in production for error tracking
+SENTRY_ENVIRONMENT = API_ENV
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))  # 10% of transactions
+
+# Prometheus metrics
+METRICS_ENABLED = os.getenv("METRICS_ENABLED", "true").lower() == "true"
+METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+
+# Health check configuration
+HEALTH_CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL", "60"))  # seconds
 
 # ============================================
 # FEATURE ENGINEERING PARAMETERS

@@ -22,6 +22,8 @@ pydantic==2.3.0            # Data validation using Python type hints
 python-jose[cryptography]==3.3.0  # JWT tokens for authentication
 passlib[bcrypt]==1.7.4     # Password hashing
 python-multipart==0.0.6    # Handle file uploads in API
+slowapi==0.1.9             # Rate limiting for FastAPI
+python-json-logger==2.0.7  # Structured JSON logging
 
 # ============================================
 # DATABASE
@@ -36,6 +38,13 @@ alembic==1.11.3            # Database migration tool
 mlflow==2.6.0              # Track experiments, models, deployments
 great-expectations==0.17.0  # Data validation and testing
 evidently==0.4.0           # Model monitoring and drift detection
+
+# ============================================
+# MONITORING & OBSERVABILITY
+# ============================================
+sentry-sdk==1.38.0         # Error tracking and performance monitoring
+prometheus-client==0.19.0  # Prometheus metrics collection
+psutil==5.9.6              # System and process utilities for health checks
 
 # ============================================
 # DATA GENERATION & FAKER
