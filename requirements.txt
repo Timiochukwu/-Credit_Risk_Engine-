@@ -38,7 +38,8 @@ alembic==1.11.3            # Database migration tool
 mlflow==2.6.0              # Track experiments, models, deployments
 # great-expectations - Temporarily disabled due to pydantic 2.x compatibility
 # Install separately if needed: pip install great-expectations>=0.18.0
-evidently==0.4.0           # Model monitoring and drift detection
+# evidently - Temporarily disabled due to pydantic 2.x compatibility
+# Install separately if needed: pip install evidently>=0.4.9
 
 # ============================================
 # MONITORING & OBSERVABILITY
