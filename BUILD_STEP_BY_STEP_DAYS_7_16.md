@@ -4752,3 +4752,453 @@ Excellent! You now have comprehensive model monitoring with database logging, me
 
 ---
 
+# 📅 Day 12: Streamlit Interactive Dashboard
+
+## 🎯 Goal
+Create an interactive web dashboard using Streamlit for visualizing predictions and monitoring model performance.
+
+**Time Required:** 2.5 hours
+
+By the end of Day 12, you will have:
+- ✅ Interactive Streamlit web dashboard
+- ✅ Real-time metrics visualization
+- ✅ Charts and graphs (plotly)
+- ✅ Prediction history table
+- ✅ Make predictions from dashboard
+- ✅ Export functionality
+
+---
+
+## 📋 Step-by-Step Instructions
+
+### Step 1: Verify Streamlit Installation
+
+Streamlit should already be in requirements.txt. Verify:
+
+```bash
+python -c "import streamlit; print('✓ Streamlit installed')"
+```
+
+**Expected output:**
+```
+✓ Streamlit installed
+```
+
+Check version:
+
+```bash
+streamlit --version
+```
+
+**Expected output:**
+```
+Streamlit, version 1.26.0
+```
+
+---
+
+### Step 2: Create Dashboard (Simple Version)
+
+For Day 12, we'll create a focused, working dashboard. Create `dashboard_app.py`:
+
+```bash
+touch dashboard_app.py
+```
+
+Open `dashboard_app.py` and paste this **COMPLETE CODE** (250 lines - simplified):
+
+```python
+"""
+Streamlit Dashboard for Credit Risk Engine
+"""
+
+import streamlit as st
+import pandas as pd
+import sys
+
+sys.path.append('.')
+from src.monitoring.db_logger import get_prediction_logger
+from src.models.predict import CreditRiskPredictor
+
+# Page config
+st.set_page_config(
+    page_title="Credit Risk Dashboard",
+    page_icon="🇳🇬",
+    layout="wide"
+)
+
+# Title
+st.title("🇳🇬 Nigerian Credit Risk Engine Dashboard")
+st.markdown("---")
+
+# Sidebar
+page = st.sidebar.radio("Navigate", ["Dashboard", "Make Prediction", "Recent Predictions"])
+
+# Get logger
+logger = get_prediction_logger()
+
+# ============================================
+# PAGE 1: DASHBOARD
+# ============================================
+
+if page == "Dashboard":
+    st.header("📊 Performance Metrics")
+
+    # Time window
+    hours = st.selectbox("Time Window", [1, 24, 168], format_func=lambda x: {1: "Last Hour", 24: "Last 24 Hours", 168: "Last Week"}[x], index=1)
+
+    # Get metrics
+    metrics = logger.get_performance_metrics(hours=hours)
+
+    # Display metrics
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Total Predictions", metrics['total_predictions'])
+
+    with col2:
+        if metrics['accuracy'] is not None:
+            st.metric("Accuracy", f"{metrics['accuracy']*100:.1f}%")
+        else:
+            st.metric("Accuracy", "N/A")
+
+    with col3:
+        if metrics['average_default_probability'] is not None:
+            st.metric("Avg Risk", f"{metrics['average_default_probability']*100:.2f}%")
+        else:
+            st.metric("Avg Risk", "N/A")
+
+    with col4:
+        if metrics['average_processing_time_ms'] is not None:
+            st.metric("Avg Time", f"{metrics['average_processing_time_ms']:.0f}ms")
+        else:
+            st.metric("Avg Time", "N/A")
+
+    st.markdown("---")
+
+    # Risk distribution
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Risk Distribution")
+        if metrics['risk_distribution']:
+            risk_df = pd.DataFrame(list(metrics['risk_distribution'].items()), columns=['Risk', 'Count'])
+            st.bar_chart(risk_df.set_index('Risk'))
+        else:
+            st.info("No data")
+
+    with col2:
+        st.subheader("Decision Distribution")
+        if metrics['decision_distribution']:
+            decision_df = pd.DataFrame(list(metrics['decision_distribution'].items()), columns=['Decision', 'Count'])
+            st.bar_chart(decision_df.set_index('Decision'))
+        else:
+            st.info("No data")
+
+# ============================================
+# PAGE 2: MAKE PREDICTION
+# ============================================
+
+elif page == "Make Prediction":
+    st.header("🔮 Loan Application Assessment")
+
+    with st.form("prediction_form"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            full_name = st.text_input("Full Name", "Chukwuemeka Okafor")
+            age = st.number_input("Age", 18, 100, 35)
+            education = st.selectbox("Education", ['SSCE', 'OND', 'HND', 'B.Sc', 'M.Sc', 'PhD'], index=3)
+            employment_sector = st.text_input("Employment Sector", "Oil & Gas")
+            years_employed = st.number_input("Years Employed", 0.0, 50.0, 8.5)
+            monthly_income = st.number_input("Monthly Income (₦)", 0, 10000000, 650000, step=10000)
+            existing_monthly_debt = st.number_input("Monthly Debt (₦)", 0, 5000000, 120000, step=10000)
+
+        with col2:
+            credit_history_months = st.number_input("Credit History (months)", 0, 600, 60)
+            num_credit_lines = st.number_input("Credit Lines", 0, 20, 3)
+            previous_defaults = st.number_input("Previous Defaults", 0, 10, 0)
+            bank = st.text_input("Bank", "Access Bank")
+            account_age_years = st.number_input("Account Age (years)", 0.0, 50.0, 7.5)
+            loan_amount = st.number_input("Loan Amount (₦)", 0, 100000000, 5000000, step=100000)
+            loan_term_months = st.number_input("Loan Term (months)", 1, 60, 36)
+            interest_rate = st.number_input("Interest Rate (%)", 0.0, 50.0, 22.5)
+
+        loan_purpose = st.text_input("Loan Purpose", "Business Expansion")
+
+        submitted = st.form_submit_button("Assess Application")
+
+        if submitted:
+            # Create application data
+            app_data = {
+                "full_name": full_name,
+                "age": age,
+                "education": education,
+                "employment_sector": employment_sector,
+                "years_employed": years_employed,
+                "monthly_income": monthly_income,
+                "existing_monthly_debt": existing_monthly_debt,
+                "credit_history_months": credit_history_months,
+                "num_credit_lines": num_credit_lines,
+                "previous_defaults": previous_defaults,
+                "bank": bank,
+                "account_age_years": account_age_years,
+                "loan_amount": loan_amount,
+                "loan_term_months": loan_term_months,
+                "loan_purpose": loan_purpose,
+                "interest_rate": interest_rate
+            }
+
+            # Make prediction
+            try:
+                predictor = CreditRiskPredictor()
+                predictor.load_model()
+                prediction = predictor.predict_risk(app_data)
+
+                st.markdown("---")
+                st.subheader("📊 Results")
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("Default Probability", f"{prediction['default_probability']*100:.2f}%")
+
+                with col2:
+                    st.metric("Risk Category", prediction['risk_category'])
+
+                with col3:
+                    emoji = {'APPROVE': '✅', 'REVIEW': '⚠️', 'REJECT': '❌'}[prediction['decision']]
+                    st.metric("Decision", f"{emoji} {prediction['decision']}")
+
+                st.success(f"**Reasoning:** {prediction['reasoning']}")
+                st.info(f"**Recommended Terms:** {prediction['recommended_terms']}")
+                st.info(f"**Suggested Action:** {prediction['suggested_action']}")
+
+            except Exception as e:
+                st.error(f"Prediction failed: {str(e)}")
+
+# ============================================
+# PAGE 3: RECENT PREDICTIONS
+# ============================================
+
+elif page == "Recent Predictions":
+    st.header("📋 Recent Predictions")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        hours = st.selectbox("Time Window", [1, 24, 168], format_func=lambda x: {1: "Last Hour", 24: "Last 24 Hours", 168: "Last Week"}[x], index=1)
+    with col2:
+        limit = st.number_input("Limit", 10, 1000, 50, step=10)
+
+    # Get predictions
+    predictions = logger.get_recent_predictions(limit=limit, hours=hours)
+
+    if predictions:
+        df = pd.DataFrame(predictions)
+
+        st.success(f"Found {len(predictions)} predictions")
+
+        # Display columns
+        display_cols = ['timestamp', 'applicant_name', 'loan_amount', 'default_probability',
+                       'risk_category', 'decision', 'age', 'monthly_income']
+
+        df_display = df[display_cols].copy()
+        df_display['timestamp'] = pd.to_datetime(df_display['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
+        df_display['loan_amount'] = df_display['loan_amount'].apply(lambda x: f"₦{x:,.0f}")
+        df_display['monthly_income'] = df_display['monthly_income'].apply(lambda x: f"₦{x:,.0f}")
+        df_display['default_probability'] = df_display['default_probability'].apply(lambda x: f"{x*100:.2f}%")
+
+        st.dataframe(df_display, use_container_width=True, height=600)
+
+        # Export
+        if st.button("Export to CSV"):
+            logger.export_to_csv("data/predictions_export.csv", hours=hours)
+            st.success("Exported to data/predictions_export.csv")
+
+    else:
+        st.info("No predictions found")
+
+# Footer
+st.markdown("---")
+st.markdown("🇳🇬 Nigerian Credit Risk Engine v1.0.0")
+```
+
+---
+
+### Step 3: Test the Dashboard
+
+Run the dashboard:
+
+```bash
+streamlit run dashboard_app.py
+```
+
+**Expected output:**
+```
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.1.x:8501
+```
+
+Your browser should open automatically showing the dashboard.
+
+**Test the dashboard:**
+
+1. **Dashboard Page:** View metrics and charts (may show "No data" if you haven't made predictions yet)
+
+2. **Make Prediction Page:**
+   - Fill in the form (default values are good)
+   - Click "Assess Application"
+   - See results with risk category and decision
+
+3. **Recent Predictions Page:**
+   - View predictions you just made
+   - Try exporting to CSV
+
+**Make 5-10 test predictions** to generate data for the dashboard charts.
+
+---
+
+### Step 4: Create Launcher Scripts
+
+Create bash script:
+
+```bash
+cat > run_dashboard.sh << 'EOF'
+#!/bin/bash
+echo "🚀 Starting Credit Risk Dashboard..."
+streamlit run dashboard_app.py
+EOF
+
+chmod +x run_dashboard.sh
+```
+
+Create Windows batch file:
+
+```bash
+cat > run_dashboard.bat << 'EOF'
+@echo off
+echo 🚀 Starting Credit Risk Dashboard...
+streamlit run dashboard_app.py
+EOF
+```
+
+Now start dashboard with:
+
+```bash
+./run_dashboard.sh
+```
+
+Or on Windows:
+
+```bash
+run_dashboard.bat
+```
+
+---
+
+### Step 5: Commit Your Work
+
+```bash
+git add dashboard_app.py run_dashboard.sh run_dashboard.bat
+git commit -m "Day 12: Add Streamlit interactive dashboard
+
+- Created dashboard_app.py with 3 pages (250 lines)
+- Dashboard page with metrics and bar charts
+- Make Prediction page with interactive form
+- Recent Predictions page with data table
+- Real-time metric cards
+- Risk and decision distribution charts
+- CSV export functionality
+- Launcher scripts for easy startup"
+```
+
+Push to remote:
+
+```bash
+git push -u origin claude/review-build-docs-017oQH5yzmnTZAswuKrsYs5s
+```
+
+---
+
+## ✅ Day 12 Summary
+
+### What We Built:
+
+**dashboard_app.py (250 lines):**
+- **📊 Dashboard Page:**
+  - 4 metric cards (predictions, accuracy, avg risk, avg time)
+  - Risk distribution bar chart
+  - Decision distribution bar chart
+  - Time window selector
+
+- **🔮 Make Prediction Page:**
+  - Interactive form with all loan application fields
+  - Real-time prediction with CreditRiskPredictor
+  - Result display with metrics
+  - Reasoning and recommendations
+
+- **📋 Recent Predictions Page:**
+  - Filtered prediction history
+  - Time window selection
+  - Data table with formatted values
+  - CSV export button
+
+### Files Created:
+- `dashboard_app.py` (250 lines)
+- `run_dashboard.sh` (launcher)
+- `run_dashboard.bat` (Windows launcher)
+
+### What You Can Do Now:
+- ✅ View dashboard: `streamlit run dashboard_app.py`
+- ✅ Make predictions from browser
+- ✅ Monitor performance metrics
+- ✅ View prediction history
+- ✅ Export data to CSV
+
+### Verification Checklist:
+- [ ] Dashboard starts without errors
+- [ ] All 3 pages load
+- [ ] Make test prediction
+- [ ] See results displayed
+- [ ] View prediction in Recent Predictions
+- [ ] Export CSV works
+
+---
+
+## 💡 Troubleshooting
+
+**Problem:** `ModuleNotFoundError: No module named 'streamlit'`
+**Solution:** Install: `pip install streamlit==1.26.0`
+
+**Problem:** Dashboard shows "No data"
+**Solution:** Make predictions first using "Make Prediction" page
+
+**Problem:** Model not loading
+**Solution:** Make sure Day 6 training completed and `models/best_model.pkl` exists
+
+**Problem:** Port 8501 in use
+**Solution:** Use different port: `streamlit run dashboard_app.py --server.port 8502`
+
+---
+
+## 🚀 Tomorrow: Day 13
+
+**Preview:** Docker Deployment
+- Dockerfile for API
+- Docker Compose setup
+- Multi-container architecture
+- Environment configuration
+- Production deployment
+
+**Time:** 2.5 hours
+
+---
+
+**🛑 STOP HERE FOR TODAY**
+
+Amazing! You now have an interactive web dashboard for monitoring your Credit Risk Engine!
+
+---
+
