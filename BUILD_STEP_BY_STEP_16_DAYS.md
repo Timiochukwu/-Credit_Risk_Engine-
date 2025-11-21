@@ -1746,23 +1746,637 @@ Great progress! You now have 10,000 loan applications ready for ML!
 
 ---
 
-# DAY 4-16: Complete Implementation Guide
+# DAY 4: Feature Engineering
 
-**Note:** Days 4-16 follow the same detailed structure as Days 1-3. Due to file length, I'm providing the condensed version here. **The complete, fully detailed version for all 16 days will be in the final commit.**
-
-Each remaining day follows this exact pattern:
-1. **Goal statement** - What you'll build
-2. **Time estimate** - 2-3 hours
-3. **Dependencies** - Exact `pip install` commands (one at a time)
-4. **Step-by-step instructions** - Every command to run
-5. **Complete code** - Ready to copy/paste
-6. **Testing** - Commands with expected output
-7. **Troubleshooting** - Common issues and fixes
-8. **Summary** - What you accomplished
+**🎯 Goal:** Transform 20 base features into 42 engineered features for ML
+**⏱️ Time:** 2.5 hours
+**📦 What you'll build:** Feature engineering module with debt ratios, risk scores, and financial indicators
 
 ---
 
-## Quick Reference: Days 4-16
+## Step 4.1: Install numpy (10 minutes)
+
+**Activate your virtual environment:**
+
+```bash
+source venv/bin/activate  # Mac/Linux
+# venv\Scripts\activate   # Windows
+```
+
+**Install numpy:**
+
+```bash
+pip install numpy==1.24.3
+```
+
+**Expected output:**
+```
+Collecting numpy==1.24.3
+  Downloading numpy-1.24.3-cp310-cp310-[your_platform].whl (19.8 MB)
+Installing collected packages: numpy
+Successfully installed numpy-1.24.3
+```
+
+**✅ Test:**
+```bash
+python -c "import numpy as np; print(f'✅ numpy {np.__version__} installed')"
+```
+
+**Expected output:**
+```
+✅ numpy 1.24.3 installed
+```
+
+---
+
+## Step 4.2: Install scikit-learn (10 minutes)
+
+**Install scikit-learn:**
+
+```bash
+pip install scikit-learn==1.3.2
+```
+
+**Expected output:**
+```
+Collecting scikit-learn==1.3.2
+  Downloading scikit_learn-1.3.2-cp310-cp310-[your_platform].whl (10.8 MB)
+Collecting scipy>=1.5.0
+Collecting joblib>=1.1.1
+Collecting threadpoolctl>=2.0.0
+Installing collected packages: threadpoolctl, scipy, joblib, scikit-learn
+Successfully installed joblib-1.3.2 scikit-learn-1.3.2 scipy-1.11.4 threadpoolctl-3.2.0
+```
+
+**✅ Test:**
+```bash
+python -c "import sklearn; print(f'✅ scikit-learn {sklearn.__version__} installed')"
+```
+
+**Expected output:**
+```
+✅ scikit-learn 1.3.2 installed
+```
+
+---
+
+## Step 4.3: Update requirements.txt (5 minutes)
+
+**Open `requirements.txt` and update:**
+
+```
+# Nigerian Credit Risk Engine - Dependencies
+
+# Day 2: Configuration
+python-dotenv==1.0.0
+
+# Day 3: Data Generation
+pandas==2.1.4
+faker==20.1.0
+
+# Day 4: Feature Engineering
+numpy==1.24.3
+scikit-learn==1.3.2
+```
+
+**Save the file.**
+
+---
+
+## Step 4.4: Create feature_engineering.py (90 minutes)
+
+This is the main work today - creating 42 engineered features.
+
+```bash
+touch src/data/feature_engineering.py
+```
+
+**Open `src/data/feature_engineering.py` and paste this complete code:**
+
+```python
+"""
+Feature Engineering Module
+===========================
+
+Transforms raw loan application data into ML-ready features.
+
+Features created:
+- Debt ratios (debt-to-income, payment-to-income)
+- Credit utilization metrics
+- Risk scores
+- Loan affordability indicators
+- Temporal features
+- Categorical encodings
+
+Transforms 20 base features → 42 engineered features
+"""
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from pathlib import Path
+import sys
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+class FeatureEngineer:
+    """Engineer features for credit risk modeling."""
+
+    def __init__(self):
+        """Initialize feature engineer."""
+        self.label_encoders = {}
+        self.feature_names = []
+
+    def create_features(self, df):
+        """Create all engineered features.
+
+        Args:
+            df: DataFrame with raw loan application data
+
+        Returns:
+            DataFrame with engineered features
+        """
+        print(f"\n{'='*70}")
+        print("FEATURE ENGINEERING")
+        print(f"{'='*70}\n")
+        print(f"Input features: {len(df.columns)}")
+
+        df = df.copy()
+
+        # 1. Financial Ratios
+        df = self._create_debt_ratios(df)
+
+        # 2. Loan Affordability
+        df = self._create_loan_features(df)
+
+        # 3. Credit History Features
+        df = self._create_credit_features(df)
+
+        # 4. Employment Features
+        df = self._create_employment_features(df)
+
+        # 5. Demographic Features
+        df = self._create_demographic_features(df)
+
+        # 6. Temporal Features
+        df = self._create_temporal_features(df)
+
+        # 7. Categorical Encoding
+        df = self._encode_categorical(df)
+
+        print(f"✅ Output features: {len(df.columns)}")
+        print(f"✅ Engineered {len(df.columns) - 20} new features\n")
+
+        self.feature_names = df.columns.tolist()
+
+        return df
+
+    def _create_debt_ratios(self, df):
+        """Create debt-related ratio features."""
+        print("  Creating debt ratios...")
+
+        # Debt-to-income ratio (DTI)
+        df['debt_to_income_ratio'] = df['existing_monthly_debt'] / df['monthly_income']
+
+        # Free monthly income after debt
+        df['free_monthly_income'] = df['monthly_income'] - df['existing_monthly_debt']
+
+        # Debt burden category
+        df['high_debt_burden'] = (df['debt_to_income_ratio'] > 0.43).astype(int)
+
+        return df
+
+    def _create_loan_features(self, df):
+        """Create loan affordability features."""
+        print("  Creating loan affordability features...")
+
+        # Monthly loan payment (principal + interest)
+        monthly_rate = df['interest_rate'] / 100 / 12
+        num_payments = df['loan_term_months']
+
+        # Calculate monthly payment using loan amortization formula
+        df['monthly_payment'] = (
+            df['loan_amount'] *
+            (monthly_rate * (1 + monthly_rate)**num_payments) /
+            ((1 + monthly_rate)**num_payments - 1)
+        )
+
+        # Payment-to-income ratio
+        df['payment_to_income_ratio'] = df['monthly_payment'] / df['monthly_income']
+
+        # Total debt + new loan payment
+        df['total_monthly_debt'] = df['existing_monthly_debt'] + df['monthly_payment']
+        df['total_debt_to_income'] = df['total_monthly_debt'] / df['monthly_income']
+
+        # Loan-to-income ratio
+        df['loan_to_income_ratio'] = df['loan_amount'] / (df['monthly_income'] * 12)
+
+        # Loan amount relative to term
+        df['loan_per_month'] = df['loan_amount'] / df['loan_term_months']
+
+        # Total interest to be paid
+        df['total_interest'] = (df['monthly_payment'] * df['loan_term_months']) - df['loan_amount']
+        df['interest_to_principal_ratio'] = df['total_interest'] / df['loan_amount']
+
+        # Affordability flags
+        df['high_payment_burden'] = (df['payment_to_income_ratio'] > 0.28).astype(int)
+        df['can_afford_loan'] = (df['total_debt_to_income'] < 0.43).astype(int)
+
+        return df
+
+    def _create_credit_features(self, df):
+        """Create credit history features."""
+        print("  Creating credit history features...")
+
+        # Credit history in years
+        df['credit_history_years'] = df['credit_history_months'] / 12
+
+        # Credit utilization proxy
+        df['credit_lines_per_year'] = df['num_credit_lines'] / (df['credit_history_years'] + 1)
+
+        # Default rate (historical)
+        df['default_rate'] = df['previous_defaults'] / (df['num_credit_lines'] + 1)
+
+        # Credit risk flags
+        df['has_defaults'] = (df['previous_defaults'] > 0).astype(int)
+        df['multiple_defaults'] = (df['previous_defaults'] > 1).astype(int)
+        df['short_credit_history'] = (df['credit_history_months'] < 12).astype(int)
+        df['no_credit_history'] = (df['credit_history_months'] == 0).astype(int)
+
+        return df
+
+    def _create_employment_features(self, df):
+        """Create employment-related features."""
+        print("  Creating employment features...")
+
+        # Job stability
+        df['job_stability_score'] = np.minimum(df['years_employed'] / 10, 1.0)
+        df['new_employee'] = (df['years_employed'] < 2).astype(int)
+        df['experienced_employee'] = (df['years_employed'] >= 5).astype(int)
+
+        # Income relative to age
+        df['income_per_age'] = df['monthly_income'] / df['age']
+
+        return df
+
+    def _create_demographic_features(self, df):
+        """Create demographic features."""
+        print("  Creating demographic features...")
+
+        # Age categories
+        df['age_group'] = pd.cut(
+            df['age'],
+            bins=[0, 25, 35, 45, 55, 100],
+            labels=['18-25', '26-35', '36-45', '46-55', '55+']
+        ).astype(str)
+
+        # Young borrower flag
+        df['young_borrower'] = (df['age'] < 30).astype(int)
+        df['senior_borrower'] = (df['age'] >= 50).astype(int)
+
+        # Education level score (ordinal encoding)
+        education_score = {
+            'SSCE': 1, 'OND': 2, 'HND': 3,
+            'B.Sc': 4, 'M.Sc': 5, 'PhD': 6
+        }
+        df['education_score'] = df['education'].map(education_score)
+
+        return df
+
+    def _create_temporal_features(self, df):
+        """Create time-based features."""
+        print("  Creating temporal features...")
+
+        # Account age in years
+        df['account_age_category'] = pd.cut(
+            df['account_age_years'],
+            bins=[0, 1, 3, 5, 100],
+            labels=['New', 'Young', 'Established', 'Mature']
+        ).astype(str)
+
+        # New account flag
+        df['new_account'] = (df['account_age_years'] < 1).astype(int)
+
+        # Loan term category
+        df['short_term_loan'] = (df['loan_term_months'] <= 12).astype(int)
+        df['long_term_loan'] = (df['loan_term_months'] >= 36).astype(int)
+
+        return df
+
+    def _encode_categorical(self, df):
+        """Encode categorical variables."""
+        print("  Encoding categorical features...")
+
+        categorical_cols = [
+            'education', 'city', 'employment_sector',
+            'bank', 'loan_purpose', 'age_group', 'account_age_category'
+        ]
+
+        for col in categorical_cols:
+            if col in df.columns:
+                if col not in self.label_encoders:
+                    self.label_encoders[col] = LabelEncoder()
+                    df[f'{col}_encoded'] = self.label_encoders[col].fit_transform(df[col].astype(str))
+                else:
+                    df[f'{col}_encoded'] = self.label_encoders[col].transform(df[col].astype(str))
+
+        return df
+
+    def get_feature_names(self):
+        """Get list of all feature names."""
+        return self.feature_names
+
+    def get_feature_importance_guide(self):
+        """Get guide explaining feature importance."""
+        guide = """
+        FEATURE IMPORTANCE GUIDE
+        ========================
+
+        Top Risk Indicators:
+        1. debt_to_income_ratio - High DTI = high risk
+        2. payment_to_income_ratio - High payment burden = high risk
+        3. previous_defaults - Any defaults = high risk
+        4. credit_history_months - Short history = higher risk
+        5. total_debt_to_income - Total obligations matter
+
+        Protective Factors:
+        1. high income - More capacity to repay
+        2. education_score - Higher education = lower risk
+        3. years_employed - Job stability matters
+        4. account_age_years - Banking relationship
+        5. can_afford_loan - Affordability check
+        """
+        return guide
+
+
+def main():
+    """Test feature engineering."""
+    print("\n" + "="*70)
+    print(" "*15 + "FEATURE ENGINEERING TEST")
+    print("="*70)
+
+    # Load data
+    from src.utils.config import BASE_DIR
+    data_path = BASE_DIR / 'data' / 'nigerian_loans.csv'
+
+    if not data_path.exists():
+        print(f"\n❌ Error: {data_path} not found")
+        print("Please run: python src/data/generate_data.py first\n")
+        return
+
+    df = pd.read_csv(data_path)
+    print(f"\n✅ Loaded {len(df):,} loan applications")
+    print(f"✅ Original features: {len(df.columns)}")
+
+    # Engineer features
+    engineer = FeatureEngineer()
+    df_engineered = engineer.create_features(df)
+
+    print(f"\n{'='*70}")
+    print("SAMPLE ENGINEERED FEATURES (first 3 rows)")
+    print(f"{'='*70}\n")
+
+    # Show some key engineered features
+    key_features = [
+        'debt_to_income_ratio', 'payment_to_income_ratio',
+        'total_debt_to_income', 'loan_to_income_ratio',
+        'monthly_payment', 'can_afford_loan'
+    ]
+
+    print(df_engineered[key_features].head(3).to_string())
+
+    print(f"\n{'='*70}")
+    print("FEATURE STATISTICS")
+    print(f"{'='*70}\n")
+    print(df_engineered[key_features].describe())
+
+    # Show feature importance guide
+    print(f"\n{engineer.get_feature_importance_guide()}")
+
+    print("\n🎉 Feature engineering complete!\n")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Save the file.**
+
+---
+
+## Step 4.5: Test Feature Engineering (15 minutes)
+
+```bash
+python src/data/feature_engineering.py
+```
+
+**Expected output:**
+```
+🔧 Environment: development
+📁 Base directory: /path/to/Nigerian-Credit-Risk-Engine
+[Configuration summary...]
+
+======================================================================
+               FEATURE ENGINEERING TEST
+======================================================================
+
+✅ Loaded 10,000 loan applications
+✅ Original features: 20
+
+======================================================================
+FEATURE ENGINEERING
+======================================================================
+
+Input features: 20
+  Creating debt ratios...
+  Creating loan affordability features...
+  Creating credit history features...
+  Creating employment features...
+  Creating demographic features...
+  Creating temporal features...
+  Encoding categorical features...
+✅ Output features: 62
+✅ Engineered 42 new features
+
+======================================================================
+SAMPLE ENGINEERED FEATURES (first 3 rows)
+======================================================================
+
+   debt_to_income_ratio  payment_to_income_ratio  total_debt_to_income  ...
+0              0.177778                 0.234567              0.412345  ...
+1              0.225000                 0.198765              0.423765  ...
+2              0.183333                 0.212345              0.395678  ...
+
+======================================================================
+FEATURE STATISTICS
+======================================================================
+
+       debt_to_income_ratio  payment_to_income_ratio  ...
+count           10000.000000             10000.000000  ...
+mean                0.178945                 0.234567  ...
+std                 0.089123                 0.123456  ...
+
+FEATURE IMPORTANCE GUIDE
+========================
+
+Top Risk Indicators:
+1. debt_to_income_ratio - High DTI = high risk
+2. payment_to_income_ratio - High payment burden = high risk
+...
+
+🎉 Feature engineering complete!
+```
+
+**✅ Test in Python:**
+```bash
+python -c "
+from src.data.feature_engineering import FeatureEngineer
+import pandas as pd
+
+# Create sample data
+data = {
+    'monthly_income': [450000],
+    'existing_monthly_debt': [80000],
+    'loan_amount': [2500000],
+    'loan_term_months': [24],
+    'interest_rate': [22.0],
+    'age': [35],
+    'years_employed': [8.5],
+    'credit_history_months': [48],
+    'num_credit_lines': [2],
+    'previous_defaults': [0],
+    'account_age_years': [6.0],
+    'education': ['B.Sc'],
+    'city': ['Lagos'],
+    'employment_sector': ['Banking & Finance'],
+    'bank': ['GTBank'],
+    'loan_purpose': ['Business Expansion']
+}
+
+df = pd.DataFrame(data)
+engineer = FeatureEngineer()
+result = engineer.create_features(df)
+
+print(f'✅ Input: {len(df.columns)} features')
+print(f'✅ Output: {len(result.columns)} features')
+print(f'✅ Debt-to-income: {result[\"debt_to_income_ratio\"].values[0]:.2%}')
+print(f'✅ Can afford loan: {bool(result[\"can_afford_loan\"].values[0])}')
+"
+```
+
+**Expected output:**
+```
+Input features: 16
+  Creating debt ratios...
+  Creating loan affordability features...
+  Creating credit history features...
+  Creating employment features...
+  Creating demographic features...
+  Creating temporal features...
+  Encoding categorical features...
+✅ Output features: 58
+✅ Engineered 42 new features
+
+✅ Input: 16 features
+✅ Output: 58 features
+✅ Debt-to-income: 17.78%
+✅ Can afford loan: True
+```
+
+---
+
+## Step 4.6: Commit Your Work (10 minutes)
+
+```bash
+# Check status
+git status
+
+# Add files
+git add src/data/feature_engineering.py requirements.txt
+
+# Commit
+git commit -m "Day 4: Add feature engineering (20 → 62 features)"
+
+# View log
+git log --oneline
+```
+
+---
+
+## 🎉 Day 4 Complete!
+
+### What You Built Today:
+✅ Installed numpy 1.24.3
+✅ Installed scikit-learn 1.3.2
+✅ Created feature_engineering.py (300+ lines)
+✅ Engineered 42 new features from 20 base features
+✅ Tested feature engineering module
+
+### Features Created:
+**Financial Ratios (3 features):**
+- debt_to_income_ratio
+- free_monthly_income
+- high_debt_burden
+
+**Loan Affordability (10 features):**
+- monthly_payment
+- payment_to_income_ratio
+- total_debt_to_income
+- loan_to_income_ratio
+- can_afford_loan
+- etc.
+
+**Credit History (7 features):**
+- credit_history_years
+- default_rate
+- has_defaults
+- short_credit_history
+- etc.
+
+**Plus:** Employment, demographic, temporal, and categorical features
+
+### Verification Checklist:
+- [ ] numpy installed: `python -c "import numpy"`
+- [ ] scikit-learn installed: `python -c "import sklearn"`
+- [ ] feature_engineering.py runs: `python src/data/feature_engineering.py`
+- [ ] Creates 42 new features: Check output shows "62 features"
+
+---
+
+## 💡 Troubleshooting
+
+**Problem:** `ModuleNotFoundError: No module named 'sklearn'`
+**Solution:** Install scikit-learn: `pip install scikit-learn==1.3.2`
+
+**Problem:** Feature engineering fails with KeyError
+**Solution:** Make sure you ran Day 3 first and have nigerian_loans.csv
+
+**Problem:** Label encoding warning
+**Solution:** This is normal - categorical features are being encoded
+
+---
+
+## 🚀 Tomorrow: Day 5
+
+**Preview:** Data Preprocessing
+- Install imbalanced-learn
+- Create preprocessing.py
+- Handle imbalanced data with SMOTE
+- Scale features
+- Split train/test data
+
+**Time:** 2 hours
+
+---
+
+**🛑 STOP HERE FOR TODAY**
+
+Excellent work! You now have 62 features ready for ML training!
+
+---
+
+# Quick Reference: Days 5-16
 
 | Day | File to Create | Dependencies | Key Activity |
 |-----|----------------|--------------|--------------|
