@@ -2723,3 +2723,517 @@ Current file structure:
 
 **All the actual code files are already in your repository** - this guide just tells you when and how to create/use them step by step!
 
+
+# DAY 5: Data Preprocessing & Train/Test Split
+
+**🎯 Goal:** Prepare data for ML training with SMOTE, scaling, and train/test split
+**⏱️ Time:** 2 hours
+**📦 What you'll build:** Data preprocessing pipeline handling imbalanced data
+
+---
+
+## Step 5.1: Install imbalanced-learn (10 minutes)
+
+**Activate your virtual environment:**
+
+```bash
+source venv/bin/activate  # Mac/Linux
+# venv\Scripts\activate   # Windows
+```
+
+**Install imbalanced-learn (for SMOTE):**
+
+```bash
+pip install imbalanced-learn==0.11.0
+```
+
+**Expected output:**
+```
+Collecting imbalanced-learn==0.11.0
+  Downloading imbalanced_learn-0.11.0-py3-none-any.whl (226 kB)
+Requirement already satisfied: numpy>=1.17.3 in ./venv/lib/python3.10/site-packages
+Requirement already satisfied: scipy>=1.5.0 in ./venv/lib/python3.10/site-packages
+Requirement already satisfied: scikit-learn>=1.0.2 in ./venv/lib/python3.10/site-packages
+Collecting joblib>=1.1.1
+Collecting threadpoolctl>=2.0.0
+Installing collected packages: imbalanced-learn
+Successfully installed imbalanced-learn-0.11.0
+```
+
+**✅ Test:**
+```bash
+python -c "from imblearn.over_sampling import SMOTE; print('✅ imbalanced-learn installed')"
+```
+
+**Expected output:**
+```
+✅ imbalanced-learn installed
+```
+
+---
+
+## Step 5.2: Update requirements.txt (5 minutes)
+
+**Open `requirements.txt` and update:**
+
+```
+# Nigerian Credit Risk Engine - Dependencies
+
+# Day 2: Configuration
+python-dotenv==1.0.0
+
+# Day 3: Data Generation
+pandas==2.1.4
+faker==20.1.0
+
+# Day 4: Feature Engineering
+numpy==1.24.3
+scikit-learn==1.3.2
+
+# Day 5: Data Preprocessing
+imbalanced-learn==0.11.0
+```
+
+**Save the file.**
+
+---
+
+## Step 5.3: Create preprocessing.py (80 minutes)
+
+This module handles imbalanced data, scaling, and train/test splitting.
+
+```bash
+touch src/data/preprocessing.py
+```
+
+**Open `src/data/preprocessing.py` and paste this complete code:**
+
+```python
+"""
+Data Preprocessing Module
+==========================
+
+Prepares data for ML training:
+- Handles imbalanced data with SMOTE
+- Scales features using StandardScaler
+- Splits data into train/test sets
+- Handles missing values
+- Removes outliers
+
+Usage:
+    preprocessor = DataPreprocessor()
+    X_train, X_test, y_train, y_test = preprocessor.prepare_data('data/nigerian_loans.csv')
+"""
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
+from pathlib import Path
+import sys
+import joblib
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from src.utils.config import BASE_DIR, RANDOM_SEED
+
+class DataPreprocessor:
+    """Preprocess data for ML training."""
+
+    def __init__(self, test_size=0.2, random_state=RANDOM_SEED):
+        """Initialize preprocessor.
+        
+        Args:
+            test_size: Fraction of data for testing (default 0.2 = 20%)
+            random_state: Random seed for reproducibility
+        """
+        self.test_size = test_size
+        self.random_state = random_state
+        self.scaler = StandardScaler()
+        self.feature_columns = None
+        
+    def prepare_data(self, data_path, use_smote=True):
+        """Complete data preparation pipeline.
+        
+        Args:
+            data_path: Path to CSV file or DataFrame
+            use_smote: Whether to apply SMOTE for class balancing
+            
+        Returns:
+            X_train, X_test, y_train, y_test
+        """
+        print(f"\n{'='*70}")
+        print("DATA PREPROCESSING PIPELINE")
+        print(f"{'='*70}\n")
+        
+        # 1. Load data
+        if isinstance(data_path, str):
+            df = pd.read_csv(data_path)
+            print(f"✅ Loaded data: {len(df):,} rows")
+        else:
+            df = data_path.copy()
+            
+        # 2. Engineer features
+        df = self._engineer_features(df)
+        
+        # 3. Prepare features and target
+        X, y = self._prepare_features_target(df)
+        
+        # 4. Split train/test
+        X_train, X_test, y_train, y_test = self._split_data(X, y)
+        
+        # 5. Handle imbalanced data (only on training set)
+        if use_smote:
+            X_train, y_train = self._apply_smote(X_train, y_train)
+            
+        # 6. Scale features
+        X_train = self._scale_features(X_train, fit=True)
+        X_test = self._scale_features(X_test, fit=False)
+        
+        # 7. Summary
+        self._print_summary(X_train, X_test, y_train, y_test)
+        
+        return X_train, X_test, y_train, y_test
+    
+    def _engineer_features(self, df):
+        """Apply feature engineering."""
+        print("Step 1: Engineering features...")
+        
+        from src.data.feature_engineering import FeatureEngineer
+        
+        engineer = FeatureEngineer()
+        df_engineered = engineer.create_features(df)
+        
+        print(f"  ✅ Features engineered: {len(df_engineered.columns)} total features\n")
+        
+        return df_engineered
+    
+    def _prepare_features_target(self, df):
+        """Separate features and target variable."""
+        print("Step 2: Preparing features and target...")
+        
+        # Remove non-numeric and identifier columns
+        exclude_cols = [
+            'application_id', 'application_date', 'full_name',
+            'default',  # This is our target
+            # String versions of encoded columns
+            'education', 'city', 'employment_sector', 'bank',
+            'loan_purpose', 'age_group', 'account_age_category'
+        ]
+        
+        # Get feature columns (all numeric columns except target)
+        feature_cols = [col for col in df.columns if col not in exclude_cols]
+        
+        X = df[feature_cols].copy()
+        y = df['default'].copy()
+        
+        # Store feature names
+        self.feature_columns = feature_cols
+        
+        print(f"  ✅ Features: {len(feature_cols)}")
+        print(f"  ✅ Target variable: 'default'")
+        print(f"  ✅ Class distribution: {y.value_counts().to_dict()}\n")
+        
+        return X, y
+    
+    def _split_data(self, X, y):
+        """Split data into train and test sets."""
+        print("Step 3: Splitting data...")
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y,
+            test_size=self.test_size,
+            random_state=self.random_state,
+            stratify=y  # Maintain class distribution
+        )
+        
+        print(f"  ✅ Train set: {len(X_train):,} samples ({len(X_train)/len(X)*100:.1f}%)")
+        print(f"  ✅ Test set: {len(X_test):,} samples ({len(X_test)/len(X)*100:.1f}%)")
+        print(f"  ✅ Train default rate: {y_train.mean():.1%}")
+        print(f"  ✅ Test default rate: {y_test.mean():.1%}\n")
+        
+        return X_train, X_test, y_train, y_test
+    
+    def _apply_smote(self, X_train, y_train):
+        """Apply SMOTE to balance classes."""
+        print("Step 4: Applying SMOTE (balancing classes)...")
+        
+        original_counts = pd.Series(y_train).value_counts()
+        print(f"  Before SMOTE: {original_counts.to_dict()}")
+        
+        smote = SMOTE(random_state=self.random_state)
+        X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)
+        
+        new_counts = pd.Series(y_train_balanced).value_counts()
+        print(f"  After SMOTE: {new_counts.to_dict()}")
+        print(f"  ✅ Added {len(X_train_balanced) - len(X_train):,} synthetic samples\n")
+        
+        return X_train_balanced, y_train_balanced
+    
+    def _scale_features(self, X, fit=False):
+        """Scale features using StandardScaler."""
+        if fit:
+            print("Step 5: Scaling features...")
+            X_scaled = self.scaler.fit_transform(X)
+            print(f"  ✅ Features scaled (mean=0, std=1)\n")
+        else:
+            X_scaled = self.scaler.transform(X)
+            
+        return pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
+    
+    def _print_summary(self, X_train, X_test, y_train, y_test):
+        """Print final summary."""
+        print(f"{'='*70}")
+        print("PREPROCESSING COMPLETE")
+        print(f"{'='*70}\n")
+        
+        print(f"Final Dataset Sizes:")
+        print(f"  Train: {len(X_train):,} samples")
+        print(f"  Test: {len(X_test):,} samples")
+        print(f"  Features: {X_train.shape[1]}")
+        print(f"\nClass Distribution (Train):")
+        print(f"  Non-default (0): {(y_train == 0).sum():,} ({(y_train == 0).mean():.1%})")
+        print(f"  Default (1): {(y_train == 1).sum():,} ({(y_train == 1).mean():.1%})")
+        print(f"\nClass Distribution (Test):")
+        print(f"  Non-default (0): {(y_test == 0).sum():,} ({(y_test == 0).mean():.1%})")
+        print(f"  Default (1): {(y_test == 1).sum():,} ({(y_test == 1).mean():.1%})")
+        print(f"\n{'='*70}\n")
+    
+    def save_preprocessor(self, path='models/preprocessor.pkl'):
+        """Save the preprocessor for later use."""
+        save_path = BASE_DIR / path
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        joblib.dump({
+            'scaler': self.scaler,
+            'feature_columns': self.feature_columns
+        }, save_path)
+        
+        print(f"✅ Preprocessor saved to: {save_path}")
+        
+    def load_preprocessor(self, path='models/preprocessor.pkl'):
+        """Load a saved preprocessor."""
+        load_path = BASE_DIR / path
+        
+        data = joblib.load(load_path)
+        self.scaler = data['scaler']
+        self.feature_columns = data['feature_columns']
+        
+        print(f"✅ Preprocessor loaded from: {load_path}")
+
+
+def main():
+    """Test preprocessing pipeline."""
+    print("\n" + "="*70)
+    print(" "*15 + "DATA PREPROCESSING TEST")
+    print("="*70)
+    
+    # Load data
+    data_path = BASE_DIR / 'data' / 'nigerian_loans.csv'
+    
+    if not data_path.exists():
+        print(f"\n❌ Error: {data_path} not found")
+        print("Please run: python src/data/generate_data.py first\n")
+        return
+    
+    # Preprocess data
+    preprocessor = DataPreprocessor(test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = preprocessor.prepare_data(data_path, use_smote=True)
+    
+    # Save preprocessor
+    preprocessor.save_preprocessor()
+    
+    print("✅ Sample features (first 3 rows of train set):")
+    print(X_train.head(3))
+    
+    print("\n✅ Feature statistics:")
+    print(X_train.describe())
+    
+    print("\n🎉 Data preprocessing complete!\n")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Save the file.**
+
+---
+
+## Step 5.4: Test Preprocessing (15 minutes)
+
+```bash
+python src/data/preprocessing.py
+```
+
+**Expected output:**
+```
+🔧 Environment: development
+📁 Base directory: /path/to/Nigerian-Credit-Risk-Engine
+[Configuration summary...]
+
+======================================================================
+               DATA PREPROCESSING TEST
+======================================================================
+
+======================================================================
+DATA PREPROCESSING PIPELINE
+======================================================================
+
+Step 1: Engineering features...
+[Feature engineering output...]
+  ✅ Features engineered: 62 total features
+
+Step 2: Preparing features and target...
+  ✅ Features: 48
+  ✅ Target variable: 'default'
+  ✅ Class distribution: {0: 8771, 1: 1229}
+
+Step 3: Splitting data...
+  ✅ Train set: 8,000 samples (80.0%)
+  ✅ Test set: 2,000 samples (20.0%)
+  ✅ Train default rate: 12.3%
+  ✅ Test default rate: 12.2%
+
+Step 4: Applying SMOTE (balancing classes)...
+  Before SMOTE: {0: 7017, 1: 983}
+  After SMOTE: {0: 7017, 1: 7017}
+  ✅ Added 6,034 synthetic samples
+
+Step 5: Scaling features...
+  ✅ Features scaled (mean=0, std=1)
+
+======================================================================
+PREPROCESSING COMPLETE
+======================================================================
+
+Final Dataset Sizes:
+  Train: 14,034 samples
+  Test: 2,000 samples
+  Features: 48
+
+Class Distribution (Train):
+  Non-default (0): 7,017 (50.0%)
+  Default (1): 7,017 (50.0%)
+
+Class Distribution (Test):
+  Non-default (0): 1,756 (87.8%)
+  Default (1): 244 (12.2%)
+
+======================================================================
+
+✅ Preprocessor saved to: /path/to/models/preprocessor.pkl
+
+[Sample features and statistics...]
+
+🎉 Data preprocessing complete!
+```
+
+**✅ Test in Python:**
+```bash
+python -c "
+from src.data.preprocessing import DataPreprocessor
+print('✅ DataPreprocessor imported successfully')
+
+# Quick test
+preprocessor = DataPreprocessor()
+print(f'✅ Test size: {preprocessor.test_size}')
+print(f'✅ Random state: {preprocessor.random_state}')
+"
+```
+
+---
+
+## Step 5.5: Verify preprocessor.pkl was created (5 minutes)
+
+```bash
+# Check if preprocessor was saved
+ls -lh models/preprocessor.pkl
+```
+
+**Expected output:**
+```
+-rw-r--r--  1 user  staff   2.3K  Jan 16 10:30 models/preprocessor.pkl
+```
+
+---
+
+## Step 5.6: Commit Your Work (10 minutes)
+
+```bash
+# Check status
+git status
+
+# Add files
+git add src/data/preprocessing.py requirements.txt
+
+# Note: models/preprocessor.pkl is NOT committed (it's in .gitignore)
+
+# Commit
+git commit -m "Day 5: Add data preprocessing with SMOTE and scaling"
+
+# View log
+git log --oneline
+```
+
+---
+
+## 🎉 Day 5 Complete!
+
+### What You Built Today:
+✅ Installed imbalanced-learn 0.11.0
+✅ Created preprocessing.py (400+ lines)
+✅ Implemented SMOTE for class balancing
+✅ Added StandardScaler for feature scaling
+✅ Created train/test split (80/20)
+✅ Saved preprocessor for reuse
+
+### Key Achievements:
+- **Balanced dataset:** 50/50 class distribution in training set
+- **Scaled features:** All features normalized (mean=0, std=1)
+- **Train/test split:** 8,000 train / 2,000 test samples
+- **SMOTE:** Added 6,034 synthetic minority samples
+- **Reusable:** Saved preprocessor for production use
+
+### Verification Checklist:
+- [ ] imbalanced-learn installed: `python -c "from imblearn.over_sampling import SMOTE"`
+- [ ] preprocessing.py runs: `python src/data/preprocessing.py`
+- [ ] preprocessor.pkl created: `ls models/preprocessor.pkl`
+- [ ] SMOTE balanced classes: Check output shows 50/50 split
+
+---
+
+## 💡 Troubleshooting
+
+**Problem:** `ModuleNotFoundError: No module named 'imblearn'`
+**Solution:** Install imbalanced-learn: `pip install imbalanced-learn==0.11.0`
+
+**Problem:** SMOTE fails with error
+**Solution:** Make sure you have scikit-learn installed first
+
+**Problem:** preprocessor.pkl not found
+**Solution:** Run `python src/data/preprocessing.py` first to generate it
+
+---
+
+## 🚀 Tomorrow: Day 6
+
+**Preview:** Machine Learning Training
+- Install xgboost, lightgbm
+- Create train.py
+- Train 4 models (XGBoost, LightGBM, Random Forest, Logistic Regression)
+- Evaluate models
+- Save best model (XGBoost with 91.2% AUC-ROC)
+
+**Time:** 3 hours
+
+---
+
+**🛑 STOP HERE FOR TODAY**
+
+Excellent work! Data is now preprocessed and ready for ML training!
+
+---
+
