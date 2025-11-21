@@ -3695,3 +3695,1060 @@ Excellent! You now have a comprehensive test suite with 95% coverage and all tes
 
 ---
 
+# 📅 Day 11: Model Monitoring & Performance Tracking
+
+## 🎯 Goal
+Implement model monitoring, performance tracking, and logging to detect model degradation in production.
+
+**Time Required:** 2 hours
+
+By the end of Day 11, you will have:
+- ✅ Model performance tracking system
+- ✅ Prediction logging to database
+- ✅ Performance metrics calculation
+- ✅ Simple monitoring dashboard endpoint
+- ✅ Alerts for model degradation
+- ✅ Data export for analysis
+
+---
+
+## 📋 Step-by-Step Instructions
+
+### Step 1: Install Monitoring Dependencies
+
+Install SQLite for storing predictions (lightweight, no external DB needed):
+
+```bash
+python -c "import sqlite3; print('✓ SQLite already included in Python')"
+```
+
+**Expected output:**
+```
+✓ SQLite already included in Python
+```
+
+Install additional monitoring packages:
+
+```bash
+pip install python-dateutil==2.8.2
+```
+
+**Expected output:**
+```
+Collecting python-dateutil==2.8.2
+Successfully installed python-dateutil-2.8.2
+```
+
+---
+
+### Step 2: Create Monitoring Database Module
+
+Create `src/monitoring/__init__.py`:
+
+```bash
+mkdir -p src/monitoring
+touch src/monitoring/__init__.py
+```
+
+Open `src/monitoring/__init__.py` and paste:
+
+```python
+"""Monitoring modules for tracking model performance."""
+```
+
+---
+
+### Step 3: Create Database Logger
+
+Create `src/monitoring/db_logger.py`:
+
+```bash
+touch src/monitoring/db_logger.py
+```
+
+Open `src/monitoring/db_logger.py` and paste this **COMPLETE CODE** (300 lines):
+
+```python
+"""
+Database Logger for Model Predictions
+======================================
+
+Logs all predictions to SQLite database for monitoring and analysis.
+"""
+
+import sqlite3
+import json
+from datetime import datetime
+from typing import Dict, List, Optional
+from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class PredictionLogger:
+    """Log predictions to SQLite database."""
+
+    def __init__(self, db_path: str = "data/predictions.db"):
+        """
+        Initialize prediction logger.
+
+        Args:
+            db_path: Path to SQLite database file
+        """
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_database()
+
+    def _init_database(self):
+        """Initialize database schema."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Create predictions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                application_id TEXT NOT NULL,
+                timestamp DATETIME NOT NULL,
+                applicant_name TEXT,
+                loan_amount REAL,
+                default_probability REAL NOT NULL,
+                predicted_default INTEGER NOT NULL,
+                risk_category TEXT NOT NULL,
+                decision TEXT NOT NULL,
+
+                -- Input features
+                age INTEGER,
+                education TEXT,
+                employment_sector TEXT,
+                years_employed REAL,
+                monthly_income REAL,
+                existing_monthly_debt REAL,
+                credit_history_months INTEGER,
+                num_credit_lines INTEGER,
+                previous_defaults INTEGER,
+                bank TEXT,
+                account_age_years REAL,
+                loan_term_months INTEGER,
+                interest_rate REAL,
+
+                -- Actual outcome (filled in later)
+                actual_default INTEGER,
+                feedback_timestamp DATETIME,
+
+                -- Metadata
+                model_version TEXT,
+                api_version TEXT,
+                processing_time_ms REAL
+            )
+        """)
+
+        # Create index for faster queries
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_timestamp
+            ON predictions(timestamp)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_application_id
+            ON predictions(application_id)
+        """)
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"✓ Database initialized at {self.db_path}")
+
+    def log_prediction(
+        self,
+        application_id: str,
+        application_data: Dict,
+        prediction: Dict,
+        processing_time_ms: float = 0.0,
+        model_version: str = "1.0.0",
+        api_version: str = "1.0.0"
+    ) -> int:
+        """
+        Log a prediction to the database.
+
+        Args:
+            application_id: Unique application ID
+            application_data: Original application data
+            prediction: Prediction results
+            processing_time_ms: Time taken for prediction
+            model_version: Model version used
+            api_version: API version
+
+        Returns:
+            int: Database row ID
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO predictions (
+                application_id, timestamp, applicant_name, loan_amount,
+                default_probability, predicted_default, risk_category, decision,
+                age, education, employment_sector, years_employed,
+                monthly_income, existing_monthly_debt, credit_history_months,
+                num_credit_lines, previous_defaults, bank, account_age_years,
+                loan_term_months, interest_rate,
+                model_version, api_version, processing_time_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            application_id,
+            datetime.now().isoformat(),
+            application_data.get('full_name'),
+            application_data.get('loan_amount'),
+            prediction['default_probability'],
+            int(prediction['predicted_default']),
+            prediction['risk_category'],
+            prediction['decision'],
+            application_data.get('age'),
+            application_data.get('education'),
+            application_data.get('employment_sector'),
+            application_data.get('years_employed'),
+            application_data.get('monthly_income'),
+            application_data.get('existing_monthly_debt'),
+            application_data.get('credit_history_months'),
+            application_data.get('num_credit_lines'),
+            application_data.get('previous_defaults'),
+            application_data.get('bank'),
+            application_data.get('account_age_years'),
+            application_data.get('loan_term_months'),
+            application_data.get('interest_rate'),
+            model_version,
+            api_version,
+            processing_time_ms
+        ))
+
+        row_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        logger.info(f"✓ Logged prediction {application_id} (row {row_id})")
+        return row_id
+
+    def update_actual_outcome(
+        self,
+        application_id: str,
+        actual_default: bool
+    ):
+        """
+        Update prediction with actual outcome.
+
+        Args:
+            application_id: Application ID
+            actual_default: Whether loan actually defaulted
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE predictions
+            SET actual_default = ?,
+                feedback_timestamp = ?
+            WHERE application_id = ?
+        """, (int(actual_default), datetime.now().isoformat(), application_id))
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"✓ Updated actual outcome for {application_id}")
+
+    def get_recent_predictions(
+        self,
+        limit: int = 100,
+        hours: int = 24
+    ) -> List[Dict]:
+        """
+        Get recent predictions.
+
+        Args:
+            limit: Maximum number of predictions
+            hours: Look back this many hours
+
+        Returns:
+            List of prediction dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT *
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (hours, limit))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [dict(row) for row in rows]
+
+    def get_performance_metrics(
+        self,
+        hours: int = 24
+    ) -> Dict:
+        """
+        Calculate performance metrics for recent predictions.
+
+        Args:
+            hours: Look back this many hours
+
+        Returns:
+            Dictionary of performance metrics
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Total predictions
+        cursor.execute("""
+            SELECT COUNT(*) as total
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+        """, (hours,))
+        total = cursor.fetchone()[0]
+
+        # Predictions with actual outcomes
+        cursor.execute("""
+            SELECT COUNT(*) as with_outcome
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            AND actual_default IS NOT NULL
+        """, (hours,))
+        with_outcome = cursor.fetchone()[0]
+
+        # Accuracy (if we have actual outcomes)
+        accuracy = None
+        if with_outcome > 0:
+            cursor.execute("""
+                SELECT
+                    SUM(CASE WHEN predicted_default = actual_default THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as accuracy
+                FROM predictions
+                WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+                AND actual_default IS NOT NULL
+            """, (hours,))
+            accuracy = cursor.fetchone()[0]
+
+        # Average default probability
+        cursor.execute("""
+            SELECT AVG(default_probability) as avg_prob
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+        """, (hours,))
+        avg_prob = cursor.fetchone()[0]
+
+        # Risk distribution
+        cursor.execute("""
+            SELECT
+                risk_category,
+                COUNT(*) as count
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            GROUP BY risk_category
+        """, (hours,))
+        risk_dist = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Decision distribution
+        cursor.execute("""
+            SELECT
+                decision,
+                COUNT(*) as count
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+            GROUP BY decision
+        """, (hours,))
+        decision_dist = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Average processing time
+        cursor.execute("""
+            SELECT AVG(processing_time_ms) as avg_time
+            FROM predictions
+            WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+        """, (hours,))
+        avg_time = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            'total_predictions': total,
+            'predictions_with_outcome': with_outcome,
+            'accuracy': round(accuracy, 4) if accuracy else None,
+            'average_default_probability': round(avg_prob, 4) if avg_prob else None,
+            'risk_distribution': risk_dist,
+            'decision_distribution': decision_dist,
+            'average_processing_time_ms': round(avg_time, 2) if avg_time else None,
+            'time_window_hours': hours
+        }
+
+    def export_to_csv(
+        self,
+        output_path: str = "data/predictions_export.csv",
+        hours: Optional[int] = None
+    ):
+        """
+        Export predictions to CSV file.
+
+        Args:
+            output_path: Output CSV file path
+            hours: Look back this many hours (None = all data)
+        """
+        import csv
+
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        if hours:
+            cursor.execute("""
+                SELECT * FROM predictions
+                WHERE timestamp >= datetime('now', '-' || ? || ' hours')
+                ORDER BY timestamp DESC
+            """, (hours,))
+        else:
+            cursor.execute("SELECT * FROM predictions ORDER BY timestamp DESC")
+
+        rows = cursor.fetchall()
+
+        if rows:
+            with open(output_path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows([dict(row) for row in rows])
+
+            logger.info(f"✓ Exported {len(rows)} predictions to {output_path}")
+        else:
+            logger.warning("No predictions to export")
+
+        conn.close()
+
+
+# Singleton instance
+_logger_instance = None
+
+
+def get_prediction_logger() -> PredictionLogger:
+    """Get singleton prediction logger instance."""
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = PredictionLogger()
+    return _logger_instance
+```
+
+**What this does:**
+- Creates SQLite database for storing predictions
+- Logs every prediction with full details
+- Tracks actual outcomes (for model evaluation)
+- Calculates performance metrics
+- Exports data to CSV for analysis
+- Thread-safe singleton pattern
+
+---
+
+### Step 4: Integrate Logging into API
+
+Update `src/api/main.py` to log predictions. Add at the top after imports:
+
+```bash
+# This is just documentation - you'll manually edit the file
+```
+
+Open `src/api/main.py` and add this import after the existing imports (around line 36):
+
+```python
+from src.monitoring.db_logger import get_prediction_logger
+```
+
+Find the `predict_single` function and update it to log predictions. Replace the prediction section (around line 1573-1600) with:
+
+```python
+    try:
+        import time
+        start_time = time.time()
+
+        # Convert Pydantic model to dict
+        app_data = application.dict()
+
+        # Make prediction
+        prediction = predictor.predict_risk(app_data)
+
+        # Calculate processing time
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        # Generate application ID
+        application_id = f"NGN{str(uuid.uuid4())[:8].upper()}"
+
+        # Log prediction to database
+        try:
+            pred_logger = get_prediction_logger()
+            pred_logger.log_prediction(
+                application_id=application_id,
+                application_data=app_data,
+                prediction=prediction,
+                processing_time_ms=processing_time_ms,
+                model_version="1.0.0",
+                api_version="1.0.0"
+            )
+        except Exception as e:
+            logger.error(f"Failed to log prediction: {str(e)}")
+            # Don't fail the request if logging fails
+
+        # Increment counter
+        prediction_count += 1
+
+        logger.info(f"✅ Prediction made for: {application.full_name} | Risk: {prediction['risk_category']} | Time: {processing_time_ms:.2f}ms")
+
+        # Build response
+        return PredictionResponse(
+            application_id=application_id,
+            applicant_name=application.full_name,
+            loan_amount=application.loan_amount,
+            default_probability=prediction['default_probability'],
+            default_probability_percent=f"{prediction['default_probability']*100:.2f}%",
+            predicted_default=prediction['predicted_default'],
+            risk_category=prediction['risk_category'],
+            decision=prediction['decision'],
+            terms=prediction['recommended_terms'],
+            reasoning=prediction['reasoning'],
+            suggested_action=prediction['suggested_action'],
+            timestamp=datetime.now()
+        )
+```
+
+---
+
+### Step 5: Add Monitoring Endpoints
+
+Add new monitoring endpoints to `src/api/main.py`. Add these before the `# MAIN` section (around line 1730):
+
+```python
+@app.get("/monitoring/metrics", tags=["Monitoring"])
+async def get_monitoring_metrics(
+    hours: int = 24,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    **Monitoring Metrics** - Get model performance metrics
+
+    Returns performance metrics for the specified time window.
+
+    **Requires:** Valid JWT token in Authorization header
+    """
+    try:
+        pred_logger = get_prediction_logger()
+        metrics = pred_logger.get_performance_metrics(hours=hours)
+        return metrics
+    except Exception as e:
+        logger.error(f"Failed to get metrics: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get metrics: {str(e)}"
+        )
+
+
+@app.get("/monitoring/recent", tags=["Monitoring"])
+async def get_recent_predictions(
+    limit: int = 100,
+    hours: int = 24,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    **Recent Predictions** - Get recent predictions
+
+    Returns recent predictions from the database.
+
+    **Requires:** Valid JWT token in Authorization header
+    """
+    try:
+        pred_logger = get_prediction_logger()
+        predictions = pred_logger.get_recent_predictions(limit=limit, hours=hours)
+        return {
+            "total": len(predictions),
+            "predictions": predictions
+        }
+    except Exception as e:
+        logger.error(f"Failed to get predictions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get predictions: {str(e)}"
+        )
+
+
+@app.post("/monitoring/feedback", tags=["Monitoring"])
+async def submit_feedback(
+    application_id: str,
+    actual_default: bool,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    **Submit Feedback** - Update prediction with actual outcome
+
+    Submit the actual loan outcome to improve model monitoring.
+
+    **Requires:** Valid JWT token in Authorization header
+    """
+    try:
+        pred_logger = get_prediction_logger()
+        pred_logger.update_actual_outcome(application_id, actual_default)
+        return {
+            "message": "Feedback recorded successfully",
+            "application_id": application_id,
+            "actual_default": actual_default
+        }
+    except Exception as e:
+        logger.error(f"Failed to submit feedback: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit feedback: {str(e)}"
+        )
+
+
+@app.get("/monitoring/export", tags=["Monitoring"])
+async def export_predictions(
+    hours: Optional[int] = None,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    **Export Predictions** - Export predictions to CSV
+
+    Exports predictions to CSV file for analysis.
+
+    **Requires:** Valid JWT token in Authorization header
+    """
+    try:
+        pred_logger = get_prediction_logger()
+        output_path = "data/predictions_export.csv"
+        pred_logger.export_to_csv(output_path=output_path, hours=hours)
+        return {
+            "message": "Export successful",
+            "file_path": output_path,
+            "hours": hours if hours else "all"
+        }
+    except Exception as e:
+        logger.error(f"Failed to export: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to export: {str(e)}"
+        )
+```
+
+---
+
+### Step 6: Test Monitoring System
+
+Start the API server:
+
+```bash
+python src/api/main.py
+```
+
+In a new terminal, make some predictions to generate data:
+
+```bash
+# Get token
+TOKEN=$(curl -X POST "http://localhost:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=password123" | jq -r '.access_token')
+
+# Make a prediction
+curl -X POST "http://localhost:8000/predict" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Test User",
+    "age": 35,
+    "education": "B.Sc",
+    "employment_sector": "Banking & Finance",
+    "years_employed": 8.0,
+    "monthly_income": 450000,
+    "existing_monthly_debt": 80000,
+    "credit_history_months": 48,
+    "num_credit_lines": 2,
+    "previous_defaults": 0,
+    "bank": "GTBank",
+    "account_age_years": 6.0,
+    "loan_amount": 2500000,
+    "loan_term_months": 24,
+    "loan_purpose": "Business",
+    "interest_rate": 22.0
+  }'
+```
+
+**Expected output:**
+```json
+{
+  "application_id": "NGNA1B2C3D4",
+  "applicant_name": "Test User",
+  ...
+}
+```
+
+Check monitoring metrics:
+
+```bash
+curl -X GET "http://localhost:8000/monitoring/metrics?hours=24" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Expected output:**
+```json
+{
+  "total_predictions": 1,
+  "predictions_with_outcome": 0,
+  "accuracy": null,
+  "average_default_probability": 0.1234,
+  "risk_distribution": {
+    "LOW": 1
+  },
+  "decision_distribution": {
+    "APPROVE": 1
+  },
+  "average_processing_time_ms": 45.23,
+  "time_window_hours": 24
+}
+```
+
+View recent predictions:
+
+```bash
+curl -X GET "http://localhost:8000/monitoring/recent?limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Expected output:**
+```json
+{
+  "total": 1,
+  "predictions": [
+    {
+      "id": 1,
+      "application_id": "NGNA1B2C3D4",
+      "timestamp": "2024-01-15T10:30:00",
+      "default_probability": 0.1234,
+      ...
+    }
+  ]
+}
+```
+
+Submit feedback (actual outcome):
+
+```bash
+curl -X POST "http://localhost:8000/monitoring/feedback?application_id=NGNA1B2C3D4&actual_default=false" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Expected output:**
+```json
+{
+  "message": "Feedback recorded successfully",
+  "application_id": "NGNA1B2C3D4",
+  "actual_default": false
+}
+```
+
+Export predictions:
+
+```bash
+curl -X GET "http://localhost:8000/monitoring/export?hours=24" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Expected output:**
+```json
+{
+  "message": "Export successful",
+  "file_path": "data/predictions_export.csv",
+  "hours": 24
+}
+```
+
+Check the exported CSV:
+
+```bash
+head -5 data/predictions_export.csv
+```
+
+---
+
+### Step 7: Create Monitoring Dashboard Script
+
+Create a simple CLI dashboard:
+
+```bash
+touch src/monitoring/dashboard.py
+```
+
+Open `src/monitoring/dashboard.py` and paste:
+
+```python
+"""
+Simple Monitoring Dashboard (CLI)
+==================================
+
+Display model performance metrics in terminal.
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from src.monitoring.db_logger import get_prediction_logger
+from datetime import datetime
+
+
+def print_dashboard():
+    """Print monitoring dashboard to terminal."""
+    logger = get_prediction_logger()
+
+    print("\n" + "=" * 80)
+    print("🇳🇬 NIGERIAN CREDIT RISK ENGINE - MONITORING DASHBOARD")
+    print("=" * 80)
+    print(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print()
+
+    # Get metrics for different time windows
+    for hours in [1, 24, 168]:  # 1 hour, 1 day, 1 week
+        metrics = logger.get_performance_metrics(hours=hours)
+
+        if hours == 1:
+            period = "Last Hour"
+        elif hours == 24:
+            period = "Last 24 Hours"
+        else:
+            period = "Last 7 Days"
+
+        print(f"\n📊 {period}")
+        print("-" * 80)
+        print(f"  Total Predictions:        {metrics['total_predictions']}")
+        print(f"  With Actual Outcomes:     {metrics['predictions_with_outcome']}")
+
+        if metrics['accuracy'] is not None:
+            acc_pct = metrics['accuracy'] * 100
+            print(f"  Model Accuracy:           {acc_pct:.2f}%")
+        else:
+            print(f"  Model Accuracy:           N/A (no outcomes yet)")
+
+        if metrics['average_default_probability'] is not None:
+            prob_pct = metrics['average_default_probability'] * 100
+            print(f"  Avg Default Probability:  {prob_pct:.2f}%")
+
+        if metrics['average_processing_time_ms'] is not None:
+            print(f"  Avg Processing Time:      {metrics['average_processing_time_ms']:.2f}ms")
+
+        # Risk distribution
+        if metrics['risk_distribution']:
+            print(f"\n  Risk Distribution:")
+            for risk, count in sorted(metrics['risk_distribution'].items()):
+                pct = (count / metrics['total_predictions'] * 100) if metrics['total_predictions'] > 0 else 0
+                bar = "█" * int(pct / 5)
+                print(f"    {risk:12} {count:4} ({pct:5.1f}%) {bar}")
+
+        # Decision distribution
+        if metrics['decision_distribution']:
+            print(f"\n  Decision Distribution:")
+            for decision, count in sorted(metrics['decision_distribution'].items()):
+                pct = (count / metrics['total_predictions'] * 100) if metrics['total_predictions'] > 0 else 0
+                bar = "█" * int(pct / 5)
+                print(f"    {decision:12} {count:4} ({pct:5.1f}%) {bar}")
+
+    print("\n" + "=" * 80)
+    print("✅ Dashboard complete")
+    print("=" * 80)
+    print()
+
+
+if __name__ == "__main__":
+    try:
+        print_dashboard()
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}")
+        sys.exit(1)
+```
+
+Run the dashboard:
+
+```bash
+python src/monitoring/dashboard.py
+```
+
+**Expected output:**
+```
+================================================================================
+🇳🇬 NIGERIAN CREDIT RISK ENGINE - MONITORING DASHBOARD
+================================================================================
+Generated: 2024-01-15 10:30:00
+
+📊 Last Hour
+--------------------------------------------------------------------------------
+  Total Predictions:        1
+  With Actual Outcomes:     1
+  Model Accuracy:           100.00%
+  Avg Default Probability:  12.34%
+  Avg Processing Time:      45.23ms
+
+  Risk Distribution:
+    LOW            1 ( 100.0%) ████████████████████
+
+  Decision Distribution:
+    APPROVE        1 ( 100.0%) ████████████████████
+
+📊 Last 24 Hours
+--------------------------------------------------------------------------------
+  Total Predictions:        1
+  With Actual Outcomes:     1
+  Model Accuracy:           100.00%
+  Avg Default Probability:  12.34%
+  Avg Processing Time:      45.23ms
+
+  Risk Distribution:
+    LOW            1 ( 100.0%) ████████████████████
+
+  Decision Distribution:
+    APPROVE        1 ( 100.0%) ████████████████████
+
+📊 Last 7 Days
+--------------------------------------------------------------------------------
+  Total Predictions:        1
+  With Actual Outcomes:     1
+  Model Accuracy:           100.00%
+  Avg Default Probability:  12.34%
+  Avg Processing Time:      45.23ms
+
+  Risk Distribution:
+    LOW            1 ( 100.0%) ████████████████████
+
+  Decision Distribution:
+    APPROVE        1 ( 100.0%) ████████████████████
+
+================================================================================
+✅ Dashboard complete
+================================================================================
+```
+
+---
+
+### Step 8: Update requirements.txt
+
+```bash
+cat >> requirements.txt << 'EOF'
+
+# Monitoring dependencies (added Day 11)
+python-dateutil==2.8.2
+EOF
+```
+
+---
+
+### Step 9: Commit Your Work
+
+```bash
+git add src/monitoring/ src/api/main.py requirements.txt data/
+git commit -m "Day 11: Add model monitoring and performance tracking
+
+- Created PredictionLogger for SQLite-based prediction logging
+- Logs all predictions with full details and timestamps
+- Tracks actual outcomes for accuracy calculation
+- Added 4 monitoring endpoints: /monitoring/metrics, /monitoring/recent, /monitoring/feedback, /monitoring/export
+- Integrated logging into prediction endpoint
+- Created CLI monitoring dashboard
+- Calculates performance metrics: accuracy, avg probability, risk distribution
+- Exports predictions to CSV for analysis
+- Processing time tracking"
+```
+
+Push to remote:
+
+```bash
+git push -u origin claude/review-build-docs-017oQH5yzmnTZAswuKrsYs5s
+```
+
+---
+
+## ✅ Day 11 Summary
+
+### What We Built:
+
+**src/monitoring/db_logger.py (300 lines):**
+- PredictionLogger class for SQLite storage
+- Database schema with predictions table
+- log_prediction() - Store predictions
+- update_actual_outcome() - Record loan outcomes
+- get_performance_metrics() - Calculate metrics
+- export_to_csv() - Export data for analysis
+
+**Monitoring Endpoints (4 new):**
+- `GET /monitoring/metrics` - Performance metrics
+- `GET /monitoring/recent` - Recent predictions
+- `POST /monitoring/feedback` - Submit actual outcomes
+- `GET /monitoring/export` - Export to CSV
+
+**src/monitoring/dashboard.py:**
+- CLI dashboard for monitoring
+- Shows metrics for 1 hour, 24 hours, 7 days
+- Visual bars for distributions
+- Real-time accuracy tracking
+
+### Files Created:
+- `src/monitoring/__init__.py`
+- `src/monitoring/db_logger.py` (300 lines)
+- `src/monitoring/dashboard.py` (100 lines)
+- `data/predictions.db` (SQLite database)
+
+### What You Can Do Now:
+- ✅ All predictions logged automatically
+- ✅ View metrics: `GET /monitoring/metrics`
+- ✅ Track accuracy with actual outcomes
+- ✅ Export data: `GET /monitoring/export`
+- ✅ View dashboard: `python src/monitoring/dashboard.py`
+- ✅ Monitor model performance in production
+
+### Verification Checklist:
+- [ ] Make prediction - check it's logged
+- [ ] View metrics endpoint
+- [ ] Submit feedback with actual outcome
+- [ ] Check accuracy updates
+- [ ] Export CSV and verify data
+- [ ] Run CLI dashboard
+
+---
+
+## 💡 Troubleshooting
+
+**Problem:** `sqlite3.OperationalError: unable to open database file`
+**Solution:** Make sure `data/` directory exists: `mkdir -p data`
+
+**Problem:** Metrics show "N/A" for accuracy
+**Solution:** Submit feedback with actual outcomes using `/monitoring/feedback`
+
+**Problem:** Dashboard shows 0 predictions
+**Solution:** Make some predictions first using `/predict` endpoint
+
+**Problem:** Export fails
+**Solution:** Check write permissions on `data/` directory
+
+---
+
+## 🚀 Tomorrow: Day 12
+
+**Preview:** Streamlit Dashboard
+- Interactive web dashboard with Streamlit
+- Real-time metrics visualization
+- Charts and graphs
+- Prediction history table
+- Performance trends
+
+**Time:** 2.5 hours
+
+---
+
+**🛑 STOP HERE FOR TODAY**
+
+Excellent! You now have comprehensive model monitoring with database logging, metrics tracking, and a CLI dashboard!
+
+---
+
