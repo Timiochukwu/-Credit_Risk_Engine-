@@ -11,7 +11,9 @@ imbalanced-learn==0.11.0   # Handle imbalanced datasets (common in credit risk)
 # ============================================
 # DEEP LEARNING (Optional but impressive)
 # ============================================
-tensorflow==2.13.0         # Neural networks
+# tensorflow - Temporarily disabled due to typing-extensions conflict with pydantic 2.x
+# Install separately if needed: pip install tensorflow>=2.15.0
+# Note: Core ML models (XGBoost, LightGBM, RF) work without TensorFlow
 
 # ============================================
 # API DEVELOPMENT
@@ -89,7 +91,8 @@ mypy==1.5.1                # Type checking
 shap==0.43.0               # SHAP explainability
 lime==0.2.0.1              # LIME local explanations
 optuna==3.3.0              # Hyperparameter optimization
-keras==2.13.1              # Deep learning (part of TensorFlow)
+# keras - Disabled (requires TensorFlow)
+# Install with: pip install tensorflow>=2.15.0 keras>=2.15.0
 
 # ============================================
 # INTEGRATION & COMMUNICATION
