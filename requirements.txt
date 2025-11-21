@@ -105,7 +105,7 @@ redis==5.0.0               # Redis cache for session management
 # BLOCKCHAIN & SMART CONTRACTS
 # ============================================
 pycryptodome==3.19.0       # Cryptographic functions for blockchain
-hashlib                    # Standard library for hashing (included in Python)
+# Note: hashlib is part of Python's standard library (no installation needed)
 
 # ============================================
 # COMPLIANCE & REGULATORY
