@@ -184,7 +184,119 @@ drwxr-xr-x  utils/
 
 ---
 
-## Step 1.4: Create .gitignore File (10 minutes)
+## Step 1.4: Initialize Python Packages (10 minutes)
+
+Create `__init__.py` files to make all folders proper Python packages.
+
+**Why this matters:** Without `__init__.py` files, Python won't recognize folders as packages, causing import errors.
+
+```bash
+# Create main src package init
+touch src/__init__.py
+
+# Create subpackage inits (all at once)
+touch src/data/__init__.py
+touch src/models/__init__.py
+touch src/api/__init__.py
+touch src/utils/__init__.py
+touch src/monitoring/__init__.py
+touch src/integrations/__init__.py
+touch src/security/__init__.py
+touch src/channels/__init__.py
+```
+
+**Add content to main package init:**
+
+Open `src/__init__.py` in your text editor and paste:
+
+```python
+"""
+Nigerian Credit Risk Engine - Main Package
+==========================================
+
+AI-powered credit risk assessment for Nigerian loan applications.
+"""
+
+__version__ = "1.0.0"
+__author__ = "Your Name"
+```
+
+**Add content to each subpackage init:**
+
+Open `src/data/__init__.py`:
+```python
+"""Data generation and preprocessing modules."""
+```
+
+Open `src/models/__init__.py`:
+```python
+"""Machine learning models and prediction."""
+```
+
+Open `src/api/__init__.py`:
+```python
+"""API endpoints and authentication."""
+```
+
+Open `src/utils/__init__.py`:
+```python
+"""Utility functions and helpers."""
+```
+
+Open `src/monitoring/__init__.py`:
+```python
+"""Model monitoring and performance tracking."""
+```
+
+Open `src/integrations/__init__.py`:
+```python
+"""External API integrations (BVN, etc)."""
+```
+
+Open `src/security/__init__.py`:
+```python
+"""Security and fraud detection."""
+```
+
+Open `src/channels/__init__.py`:
+```python
+"""Communication channels (WhatsApp, SMS, etc)."""
+```
+
+**✅ Verify all __init__.py files created:**
+
+```bash
+find src -name "__init__.py"
+```
+
+**Expected output:**
+```
+src/__init__.py
+src/api/__init__.py
+src/channels/__init__.py
+src/data/__init__.py
+src/integrations/__init__.py
+src/models/__init__.py
+src/monitoring/__init__.py
+src/security/__init__.py
+src/utils/__init__.py
+```
+
+**Count them (should be 9):**
+```bash
+find src -name "__init__.py" | wc -l
+```
+
+**Expected output:**
+```
+9
+```
+
+✅ **Success!** All Python packages properly initialized.
+
+---
+
+## Step 1.5: Create .gitignore File (10 minutes)
 
 This tells Git which files to ignore (like virtual environment, secrets).
 
@@ -267,7 +379,7 @@ cat .gitignore
 
 ---
 
-## Step 1.5: Initialize Git Repository (10 minutes)
+## Step 1.6: Initialize Git Repository (10 minutes)
 
 ```bash
 # Initialize git
@@ -295,7 +407,7 @@ git commit -m "Initial commit: Add .gitignore"
 
 ---
 
-## Step 1.6: Create Basic README (15 minutes)
+## Step 1.7: Create Basic README (15 minutes)
 
 ```bash
 # Create README file
@@ -375,7 +487,7 @@ cat README.md
 
 ---
 
-## Step 1.7: Create requirements.txt Placeholder (10 minutes)
+## Step 1.8: Create requirements.txt Placeholder (10 minutes)
 
 We'll add to this file each day as we install new packages.
 
@@ -398,7 +510,7 @@ touch requirements.txt
 
 ---
 
-## Step 1.8: First Git Commit (10 minutes)
+## Step 1.9: First Git Commit (10 minutes)
 
 ```bash
 # Check what's new
@@ -772,10 +884,7 @@ git status
 Now create the Python module that loads these environment variables.
 
 ```bash
-# Create __init__.py in utils folder
-touch src/utils/__init__.py
-
-# Create config.py
+# Create config.py (src/utils/__init__.py already created in Day 1)
 touch src/utils/config.py
 ```
 
@@ -1315,27 +1424,9 @@ faker==20.1.0
 
 ---
 
-## Step 3.4: Create __init__.py files (5 minutes)
+## Step 3.4: Create generate_data.py (60 minutes)
 
-```bash
-# Create __init__.py in data folder
-touch src/data/__init__.py
-```
-
-**✅ Verify:**
-```bash
-ls -la src/data/
-```
-
-**Expected output:**
-```
-total X
-drwxr-xr-x  __init__.py
-```
-
----
-
-## Step 3.5: Create generate_data.py (60 minutes)
+**Note:** `src/data/__init__.py` was already created in Day 1 Step 1.4.
 
 This is the longest file today - 450 lines of code.
 
@@ -1584,7 +1675,7 @@ if __name__ == "__main__":
 
 ---
 
-## Step 3.6: Run Data Generation (10 minutes)
+## Step 3.5: Run Data Generation (10 minutes)
 
 ```bash
 python src/data/generate_data.py
@@ -1628,7 +1719,7 @@ SAMPLE DATA (first 3 rows)
 
 ---
 
-## Step 3.7: Verify the CSV File (10 minutes)
+## Step 3.6: Verify the CSV File (10 minutes)
 
 ```bash
 # Check file exists
@@ -1680,7 +1771,7 @@ Avg loan: ₦3,456,789
 
 ---
 
-## Step 3.8: Commit Your Work (10 minutes)
+## Step 3.7: Commit Your Work (10 minutes)
 
 ```bash
 # Check status
@@ -3246,25 +3337,9 @@ Excellent work! Data is now preprocessed and ready for ML training!
 
 ---
 
-## Step 6.1: Create models folder and __init__.py (5 minutes)
+## Step 6.1: Install XGBoost (10 minutes)
 
-```bash
-# Create __init__.py in models source folder
-touch src/models/__init__.py
-
-# Verify
-ls -la src/models/
-```
-
-**Expected output:**
-```
-total X
-drwxr-xr-x  __init__.py
-```
-
----
-
-## Step 6.2: Install XGBoost (10 minutes)
+**Note:** `src/models/__init__.py` was already created in Day 1 Step 1.4
 
 **Install XGBoost:**
 
@@ -3294,7 +3369,7 @@ python -c "import xgboost as xgb; print(f'✅ XGBoost {xgb.__version__} installe
 
 ---
 
-## Step 6.3: Install LightGBM (10 minutes)
+## Step 6.2: Install LightGBM (10 minutes)
 
 **Install LightGBM:**
 
@@ -3324,7 +3399,7 @@ python -c "import lightgbm as lgb; print(f'✅ LightGBM {lgb.__version__} instal
 
 ---
 
-## Step 6.4: Update requirements.txt (5 minutes)
+## Step 6.3: Update requirements.txt (5 minutes)
 
 **Open `requirements.txt` and update:**
 
@@ -3355,7 +3430,7 @@ lightgbm==4.1.0
 
 ---
 
-## Step 6.5: Create train.py (120 minutes)
+## Step 6.4: Create train.py (120 minutes)
 
 This is the main work today - training 4 different models.
 
@@ -3692,7 +3767,7 @@ if __name__ == "__main__":
 
 ---
 
-## Step 6.6: Run Model Training (30 minutes)
+## Step 6.5: Run Model Training (30 minutes)
 
 **This will take 2-3 minutes to complete:**
 
@@ -3830,7 +3905,7 @@ Saved to: models/xgboost_model.pkl
 
 ---
 
-## Step 6.7: Verify Models Were Saved (5 minutes)
+## Step 6.6: Verify Models Were Saved (5 minutes)
 
 ```bash
 # Check models directory
@@ -3863,7 +3938,7 @@ Model type: XGBClassifier
 
 ---
 
-## Step 6.8: Commit Your Work (10 minutes)
+## Step 6.7: Commit Your Work (10 minutes)
 
 ```bash
 # Check status
