@@ -732,7 +732,42 @@ pydantic==2.3.0
 
 ---
 
-## Step 8.8: Create schemas.py (30 minutes)
+## Step 8.8: Create API Directory and Package (5 minutes)
+
+First, create the `src/api` directory and make it a Python package:
+
+```bash
+mkdir -p src/api
+```
+
+Create the `__init__.py` file to make `src/api` a Python package:
+
+```bash
+touch src/api/__init__.py
+```
+
+Open `src/api/__init__.py` and paste:
+
+```python
+"""API module for Credit Risk Engine."""
+```
+
+**✅ Verify:**
+```bash
+ls -la src/api/
+```
+
+**Expected output:**
+```
+total 8
+drwxr-xr-x  2 user user 4096 Jan 15 10:00 .
+drwxr-xr-x  6 user user 4096 Jan 15 10:00 ..
+-rw-r--r--  1 user user   42 Jan 15 10:00 __init__.py
+```
+
+---
+
+## Step 8.9: Create schemas.py (30 minutes)
 
 This defines the data models for our API using Pydantic.
 
@@ -875,7 +910,7 @@ class HealthResponse(BaseModel):
 
 ---
 
-## Step 8.9: Create auth.py (40 minutes)
+## Step 8.10: Create auth.py (40 minutes)
 
 This handles JWT tokens and password hashing.
 
@@ -1111,7 +1146,7 @@ if __name__ == "__main__":
 
 ---
 
-## Step 8.10: Test Authentication (15 minutes)
+## Step 8.11: Test Authentication (15 minutes)
 
 ```bash
 python src/api/auth.py
@@ -1162,7 +1197,7 @@ print(f'✅ JWT token created: {len(token)} characters')
 
 ---
 
-## Step 8.11: Commit Your Work (10 minutes)
+## Step 8.12: Commit Your Work (10 minutes)
 
 ```bash
 # Check status
@@ -2010,7 +2045,69 @@ You should see the **interactive API documentation** with:
 
 ---
 
-### Step 6: Create a Test Script
+### Step 6: Create Tests Directory and Package
+
+First, create the `tests` directory and make it a Python package:
+
+```bash
+mkdir -p tests
+```
+
+Create the `__init__.py` file:
+
+```bash
+touch tests/__init__.py
+```
+
+Open `tests/__init__.py` and paste:
+
+```python
+"""Test suite for Credit Risk Engine."""
+```
+
+**✅ Verify:**
+```bash
+ls -la tests/
+```
+
+**Expected output:**
+```
+total 8
+drwxr-xr-x  2 user user 4096 Jan 15 10:00 .
+drwxr-xr-x  7 user user 4096 Jan 15 10:00 ..
+-rw-r--r--  1 user user   42 Jan 15 10:00 __init__.py
+```
+
+---
+
+### Step 7: Install requests for API Testing
+
+Install the `requests` library for testing:
+
+```bash
+pip install requests==2.31.0
+```
+
+**Expected output:**
+```
+Collecting requests==2.31.0
+  Downloading requests-2.31.0-py3-none-any.whl (62 kB)
+Collecting charset-normalizer<4,>=2
+Collecting idna<4,>=2.5
+Collecting urllib3<3,>=1.21.1
+Collecting certifi>=2017.4.17
+Installing collected packages: urllib3, idna, charset-normalizer, certifi, requests
+Successfully installed certifi-2023.7.22 charset-normalizer-3.3.2 idna-3.6 requests-2.31.0 urllib3-2.1.0
+```
+
+**✅ Test:**
+```bash
+python -c "import requests; print('✅ requests installed')"
+```
+
+---
+
+### Step 8: Create a Test Script
 
 Let's create a Python script to test all endpoints:
 
@@ -2200,28 +2297,29 @@ python tests/test_api_endpoints.py
 
 ---
 
-### Step 7: Update requirements.txt
+### Step 9: Update requirements.txt
 
-Ensure httpx is in requirements (for API testing later):
+Update requirements.txt with requests and httpx:
 
 ```bash
 pip install httpx==0.24.1
 ```
 
-Add to `requirements.txt` if not present:
+Add both requests and httpx to `requirements.txt`:
 
 ```bash
+echo "requests==2.31.0" >> requirements.txt
 echo "httpx==0.24.1" >> requirements.txt
 ```
 
 ---
 
-### Step 8: Commit Your Work
+### Step 10: Commit Your Work
 
 Stop the API server (Ctrl+C in the first terminal), then commit:
 
 ```bash
-git add src/api/main.py tests/test_api_endpoints.py requirements.txt
+git add src/api/main.py tests/__init__.py tests/test_api_endpoints.py requirements.txt
 git commit -m "Day 9: Add complete FastAPI application with 8 REST endpoints
 
 - Created main.py with full API implementation
@@ -4771,10 +4869,47 @@ By the end of Day 12, you will have:
 
 ## 📋 Step-by-Step Instructions
 
-### Step 1: Verify Streamlit Installation
+### Step 1: Install Streamlit
 
-Streamlit should already be in requirements.txt. Verify:
+Install Streamlit for the interactive dashboard:
 
+```bash
+pip install streamlit==1.26.0
+```
+
+**Expected output:**
+```
+Collecting streamlit==1.26.0
+  Downloading streamlit-1.26.0-py2.py3-none-any.whl (8.3 MB)
+Collecting altair<6,>=4.0
+Collecting blinker<2,>=1.0.0
+Collecting cachetools<6,>=4.0
+Collecting click<9,>=7.0
+Collecting importlib-metadata<7,>=1.4
+Collecting numpy<2,>=1.19.3
+Collecting packaging<24,>=16.8
+Collecting pandas<3,>=1.3.0
+Collecting pillow<11,>=7.1.0
+Collecting protobuf<5,>=3.20
+Collecting pyarrow>=6.0
+Collecting pympler<2,>=0.9
+Collecting python-dateutil<3,>=2.7.3
+Collecting requests<3,>=2.18
+Collecting rich<14,>=10.14.0
+Collecting tenacity<9,>=8.1.0
+Collecting toml<2,>=0.10.1
+Collecting typing-extensions<5,>=4.1.0
+Collecting tzlocal<6,>=1.1
+Collecting validators<1,>=0.2
+Collecting gitpython!=3.1.19,<4,>=3.0.7
+Collecting pydeck<1,>=0.8
+Collecting tornado<7,>=6.0.3
+Collecting watchdog>=2.1.5
+Installing collected packages: [...]
+Successfully installed streamlit-1.26.0 [and dependencies]
+```
+
+**✅ Test installation:**
 ```bash
 python -c "import streamlit; print('✓ Streamlit installed')"
 ```
@@ -4784,8 +4919,7 @@ python -c "import streamlit; print('✓ Streamlit installed')"
 ✓ Streamlit installed
 ```
 
-Check version:
-
+**Check version:**
 ```bash
 streamlit --version
 ```
@@ -5098,10 +5232,20 @@ run_dashboard.bat
 
 ---
 
-### Step 5: Commit Your Work
+### Step 5: Update requirements.txt
+
+Add Streamlit to requirements:
 
 ```bash
-git add dashboard_app.py run_dashboard.sh run_dashboard.bat
+echo "streamlit==1.26.0" >> requirements.txt
+```
+
+---
+
+### Step 6: Commit Your Work
+
+```bash
+git add dashboard_app.py run_dashboard.sh run_dashboard.bat requirements.txt
 git commit -m "Day 12: Add Streamlit interactive dashboard
 
 - Created dashboard_app.py with 3 pages (250 lines)
